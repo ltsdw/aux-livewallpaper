@@ -1,0 +1,248 @@
+#define _POSIX_SOURCE
+#include "util.h"
+#include "config.h"
+
+
+int terminateProcess(pid_t pid)
+{
+    const int status = 0;
+
+    if (pid > 0)
+    {
+        kill(pid, SIGKILL);
+    }
+    return status;
+}
+
+/* this function should be used only once
+ * will return null on a second call */
+Path getConfigPath(void)
+{
+    const Path path_ = "/.config/live_wallpaper/";
+    Path path = getenv("HOME");
+    strcat(path, path_);
+    realpath(path, NULL);
+
+    return path;
+}
+
+bool checkFile(Path path, File file)
+{
+    char buf_[2];
+    char buf[200];
+    bool found = false;
+
+    sprintf(buf, "%s %s/%s %s", "tail -1", path, file, "| grep -iE -m1 \"operation failed|Error|BadDrawable\"");
+
+    FILE* pp = popen(buf, "r");
+
+    if (pp)
+    {
+        if (fgets(buf_, sizeof(buf_), pp))
+        {
+            printf("%s\n", buf_);
+            found = true;
+        }
+        pclose(pp);
+        return found;
+    } else
+    {
+        perror("something went wrong at running popen(buf, \"r\")");
+        exit(EXIT_FAILURE);
+    }
+}
+
+bool checkProcess(Cmd cmd)
+{
+    char buf_[2];
+    bool found = false;
+    char buf[40];
+
+    sprintf(buf, "%s %s %s", "ps aux | grep", cmd, "| grep -v grep");
+
+    FILE* pp = popen(buf, "r");
+
+    if (pp)
+    {
+        if (fgets(buf_, sizeof(buf_), pp))
+        {
+            found = true;
+        }
+        pclose(pp);
+        return found;
+    } else
+    {
+        perror("something went wrong at running popen(buf, \"r\")");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void createLogFile(Path config_path)
+{
+    FILE* fp;
+    char old[50];
+    char new[50];
+
+    sprintf(old, "%s/%s", config_path, "mpv.log.OLD");
+    sprintf(new, "%s/%s", config_path, "mpv.log");
+
+    remove(old);
+    rename(new, old);
+    remove(new);
+
+    fp = fopen(new, "w");
+    fclose(fp);
+}
+
+void daemonize(XWinwrap* xwinwrap)
+{
+    /* fork off the parent process */
+    pid_t pid = fork();
+
+    if (pid < 0)
+        exit(EXIT_FAILURE);
+    /* on success let the parent terminate */
+    else if (pid)
+    {
+        exit(EXIT_SUCCESS);
+    }
+    else
+    {
+//        /* on success the child process becomes session leader */
+        if (setsid() < 0)
+            exit(EXIT_FAILURE);
+        /* close all open file descriptors */
+        for (int x = sysconf(_SC_OPEN_MAX); x >= 0; x--)
+        {
+            close(x);
+        }
+    }
+}
+
+pid_t spawnProcess(const char* cmd, char* const args[])
+{
+    pid_t pid = fork();
+
+    if (pid < 0)
+    {
+        perror("something went wrong\n");
+        exit(EXIT_FAILURE);
+    } else if (pid)
+    {
+        waitpid(pid, NULL, WNOHANG);
+    } else
+    {
+        execv(cmd, args);
+        perror("something went wrong\n");
+        exit(EXIT_FAILURE);
+    }
+
+    return pid;
+}
+
+void initXWinwrap(XWinwrap* xwinwrap)
+{
+    if (!xwinwrap)
+        exit(EXIT_FAILURE);
+
+    char log_file_flag[200];
+    char media_file[200];
+
+    sprintf(log_file_flag, "%s%s%s", "--log-file=", xwinwrap->config_path, "/mpv.log");
+    sprintf(media_file, "%s/medias/%s", xwinwrap->config_path, media);
+
+    char* xwinwrap_cmd[] = {"/usr/bin/xwinwrap", "-g", "1366x768", "-ni", "-s",
+                            "-nf", "-b", "-un", "-ov", "-fdt", "-argb", "-d",
+                            "--",
+                            "/usr/bin/mpv", "--msg-level=ffmpeg=fatal,vo=fatal", log_file_flag,
+                            "--audio=no", "--osc=no", "--cursor-autohide=no", "--no-input-cursor",
+                            "--input-vo-keyboard=no", "--osd-level=0", "--hwdec=vaapi",
+                            "--vo=vaapi", "-wid", "WID", "--loop-file=yes", media_file, NULL};
+
+    createLogFile(xwinwrap->config_path);
+
+    if ((spawnProcess(xwinwrap_cmd[0], xwinwrap_cmd) ) < 0)
+        exit(EXIT_FAILURE);
+}
+
+void terminateXWinwrap(XWinwrap* xwinwrap)
+{
+    char* cmd_kill_xwinwrap[] = {"/usr/bin/pkill", "-9", "xwinwrap", NULL};
+    char* cmd_kill_mpv[] = {"/usr/bin/pkill", "-9", "mpv", NULL};
+
+    //if (terminateProcess(xwinwrap->pid))
+    //    exit(EXIT_FAILURE);
+
+    /* TODO 
+     * implement a more procise way to terminate processes by pid
+     * from the xwinwrap->parr[] structure */
+    if (spawnProcess(cmd_kill_xwinwrap[0], cmd_kill_xwinwrap) < 0)
+        exit(EXIT_FAILURE);
+
+    if (spawnProcess(cmd_kill_mpv[0], cmd_kill_mpv) < 0)
+        exit(EXIT_FAILURE);
+}
+
+void cleanAndExit(XWinwrap* xwinwrap)
+{
+    char* cmd_kill_aux_lwallpaper[] = {"/usr/bin/pkill", "-15", "aux_lwallpaper", NULL};
+
+    /* TODO 
+     * implement a way to kill process using the Config structure */
+
+
+    if (spawnProcess(cmd_kill_aux_lwallpaper[0], cmd_kill_aux_lwallpaper) < 0)
+        exit(EXIT_FAILURE);
+
+    terminateXWinwrap(xwinwrap);
+
+    exit(EXIT_SUCCESS);
+}
+
+void removeExeFromAbsPath(char* path, char* buf)
+{
+    char* token = strtok(path, "/");
+    char* tmp[200];
+    int c = 0;
+
+    while (token != NULL)
+    {
+        tmp[c] = token;
+        token = strtok(NULL, "/");
+        c++;
+    }
+
+    strcat(buf, "/");
+
+    for (int i = 0; i <= c-2; i++)
+    {
+        strcat(buf, tmp[i]);
+        strcat(buf, "/");
+    }
+}
+
+void absBinPath(char* buf, char* buf_, const char* argv0)
+{
+    char tmp[200];
+
+    if (argv0[0] == '/')
+        strncpy(buf, argv0, sizeof(tmp));
+    else
+    {
+        if (!getcwd(tmp, sizeof(tmp)))
+        {
+            perror("getcwd error");
+            exit(EXIT_FAILURE);
+        }
+        strcat(tmp, "/");
+        strcat(tmp, argv0);
+    }
+
+    if (!realpath(tmp, buf))
+    {
+        perror("realpath error");
+        exit(EXIT_FAILURE);
+    }
+
+    removeExeFromAbsPath(tmp, buf_);
+}
