@@ -29,12 +29,11 @@ int main(int arg, const char* const argv[])
             {
                 if (checkFile(xwinwrap->config_path, "mpv.log"))
                 {
-                    //printf("inside loop\n");
                     terminateXWinwrap(xwinwrap);
-                    sleep(3);
+                    sleep(2);
                     initXWinwrap(xwinwrap);
                 }
-                sleep(3);
+                sleep(20);
             }
         } else
             exit(EXIT_FAILURE);
