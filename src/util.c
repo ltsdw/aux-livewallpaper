@@ -102,9 +102,9 @@ void daemonize(void)
         if (setsid() < 0)
             die("failed to set child process.\n");
         /* close all open file descriptors */
-        for (int x = sysconf(_SC_OPEN_MAX); x >= 0; x--)
+        for (int fd = sysconf(_SC_OPEN_MAX); fd >= 0; fd--)
         {
-            close(x);
+            close(fd);
         }
     }
 }
@@ -112,6 +112,11 @@ void daemonize(void)
 pid_t spawnProcess(const char* cmd, char* const args[])
 {
     pid_t pid = fork();
+
+    for (int fd = sysconf(_SC_OPEN_MAX); fd >= 0; fd--)
+    {
+        close(fd);
+    }
 
     if (pid < 0)
         die("something went wrong.\n");
