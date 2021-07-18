@@ -3,20 +3,25 @@
 
 int main(int arg, const char* const argv[])
 {
-    char flag[3];
-    const Path config_path = getConfigPath();
-
-    daemonize();
+    char flag[10];
 
     if (argv[1])
         strncpy(flag, argv[1], 2);
+    else
+        help();
+
+    if (!strncmp(flag, "-h", 2) || !strncmp(flag, "--help", 6))
+        help();
 
     if (!strncmp(flag, "-d", 2))
     {
         cleanAndExit();
-        exit(EXIT_FAILURE);
+        die("something went wrong at stopping processes.\n");
     } else if (!strncmp(flag, "-s", 2))
     {
+        daemonize();
+        const Path config_path = getConfigPath();
+
         if (!checkProcess("xwinwrap"))
         {
             initXWinwrap(config_path);
@@ -31,9 +36,9 @@ int main(int arg, const char* const argv[])
                 sleep(20);
             }
         } else
-            exit(EXIT_FAILURE);
+            die("process already running.\n");
     } else
-        exit(EXIT_FAILURE);
+        help();
 
     return EXIT_SUCCESS;
 }

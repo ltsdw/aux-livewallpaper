@@ -8,9 +8,8 @@ int terminateProcess(pid_t pid)
     const int status = 0;
 
     if (pid > 0)
-    {
         kill(pid, SIGKILL);
-    }
+
     return status;
 }
 
@@ -39,17 +38,12 @@ bool checkFile(Path path, File file)
     if (pp)
     {
         if (fgets(buf_, sizeof(buf_), pp))
-        {
-            printf("%s\n", buf_);
             found = true;
-        }
+
         pclose(pp);
         return found;
     } else
-    {
-        perror("something went wrong at running popen(buf, \"r\")");
-        exit(EXIT_FAILURE);
-    }
+        die("something went wrong at running popen(%s, \"r\")", buf);
 }
 
 bool checkProcess(Cmd cmd)
@@ -65,16 +59,12 @@ bool checkProcess(Cmd cmd)
     if (pp)
     {
         if (fgets(buf_, sizeof(buf_), pp))
-        {
             found = true;
-        }
+
         pclose(pp);
         return found;
     } else
-    {
-        perror("something went wrong at running popen(buf, \"r\")");
-        exit(EXIT_FAILURE);
-    }
+        die("something went wrong at running popen(%s, \"r\")", buf);
 }
 
 void createLogFile(Path config_path)
@@ -100,17 +90,15 @@ void daemonize(void)
     pid_t pid = fork();
 
     if (pid < 0)
-        exit(EXIT_FAILURE);
+        die("error at forking parent process.\n");
     /* on success let the parent terminate */
     else if (pid)
-    {
         exit(EXIT_SUCCESS);
-    }
     else
     {
-//        /* on success the child process becomes session leader */
+        /* on success the child process becomes session leader */
         if (setsid() < 0)
-            exit(EXIT_FAILURE);
+            die("failed to set child process.\n");
         /* close all open file descriptors */
         for (int x = sysconf(_SC_OPEN_MAX); x >= 0; x--)
         {
@@ -124,17 +112,13 @@ pid_t spawnProcess(const char* cmd, char* const args[])
     pid_t pid = fork();
 
     if (pid < 0)
-    {
-        perror("something went wrong\n");
-        exit(EXIT_FAILURE);
-    } else if (pid)
-    {
+        die("something went wrong.\n");
+    else if (pid)
         waitpid(pid, NULL, WNOHANG);
-    } else
+    else
     {
         execv(cmd, args);
-        perror("something went wrong\n");
-        exit(EXIT_FAILURE);
+        die("something went wrong.\n");
     }
 
     return pid;
@@ -159,7 +143,7 @@ void initXWinwrap(Path config_path)
     createLogFile(config_path);
 
     if ((spawnProcess(xwinwrap_cmd[0], xwinwrap_cmd) ) < 0)
-        exit(EXIT_FAILURE);
+        die("error at spawning xwinwrap.\n");
 }
 
 void terminateXWinwrap(void)
@@ -167,17 +151,14 @@ void terminateXWinwrap(void)
     char* cmd_kill_xwinwrap[] = {"/usr/bin/pkill", "-9", "xwinwrap", NULL};
     char* cmd_kill_mpv[] = {"/usr/bin/pkill", "-9", "mpv", NULL};
 
-    //if (terminateProcess(xwinwrap->pid))
-    //    exit(EXIT_FAILURE);
-
     /* TODO 
      * implement a more procise way to terminate processes by pid
      * from the xwinwrap->parr[] structure */
     if (spawnProcess(cmd_kill_xwinwrap[0], cmd_kill_xwinwrap) < 0)
-        exit(EXIT_FAILURE);
+        die("error at killing process xwinwrap.\n");
 
-    if (spawnProcess(cmd_kill_mpv[0], cmd_kill_mpv) < 0)
-        exit(EXIT_FAILURE);
+    if (spawnProcess(cmd_kill_mpv[0], cmd_kill_mpv) < 0) 
+        die("error at killing process mpv.\n");
 }
 
 void cleanAndExit(void)
@@ -189,7 +170,7 @@ void cleanAndExit(void)
 
 
     if (spawnProcess(cmd_kill_aux_lwallpaper[0], cmd_kill_aux_lwallpaper) < 0)
-        exit(EXIT_FAILURE);
+        die("error spawning processes.\n");
 
     terminateXWinwrap();
 
@@ -227,19 +208,40 @@ void absBinPath(char* buf, char* buf_, const char* argv0)
     else
     {
         if (!getcwd(tmp, sizeof(tmp)))
-        {
-            perror("getcwd error");
-            exit(EXIT_FAILURE);
-        }
+            die("getcdw error.\n");
+
         strcat(tmp, "/");
         strcat(tmp, argv0);
     }
 
     if (!realpath(tmp, buf))
-    {
-        perror("realpath error");
-        exit(EXIT_FAILURE);
-    }
+        die("realpath error.\n");
 
     removeExeFromAbsPath(tmp, buf_);
+}
+
+void die(const char fmt[], ...)
+{
+    va_list ap;
+
+    va_start(ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    va_end(ap);
+
+    if (fmt[strlen(fmt)-1] == ':')
+    {
+        fputc(' ', stderr);
+        perror(NULL);
+    }
+    else fputc('\n', stderr);
+
+    exit(EXIT_FAILURE);
+}
+
+void help(void)
+{
+    die("version: %s\n"
+        "-h --help: for help.\n"
+        "-s: to start the thing.\n"
+        "-d: to stop the thing.\n", VERSION);
 }

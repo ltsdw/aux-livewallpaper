@@ -1,6 +1,9 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#define VERSION "0.0.1.0"
+
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -24,7 +27,6 @@ typedef struct XWinwrap
 } XWinwrap;
 
 int terminateProcess(pid_t);
-//void spawnProcess(const char* cmd, char* const args[], XWinwrap*);
 pid_t spawnProcess(const char* cmd, char* const args[]);
 Path getConfigPath(void);
 bool checkFile(Path, File);
@@ -34,6 +36,8 @@ void daemonize(void);
 void cleanAndExit(void);
 void absBinPath(Path, char*, const char*);
 void initXWinwrap(Path);
-void terminateXWinwrap();
+void terminateXWinwrap(void);
+void die(const char[], ...);
+void help(void);
 
 #endif
