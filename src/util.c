@@ -39,11 +39,12 @@ bool checkFile(Path path, File file)
     {
         if (fgets(buf_, sizeof(buf_), pp))
             found = true;
-
-        pclose(pp);
-        return found;
     } else
         die("something went wrong at running popen(%s, \"r\")", buf);
+
+    pclose(pp);
+
+    return found;
 }
 
 bool checkProcess(Cmd cmd)
@@ -60,11 +61,12 @@ bool checkProcess(Cmd cmd)
     {
         if (fgets(buf_, sizeof(buf_), pp))
             found = true;
-
-        pclose(pp);
-        return found;
     } else
         die("something went wrong at running popen(%s, \"r\")", buf);
+
+    pclose(pp);
+
+    return found;
 }
 
 void createLogFile(Path config_path)
