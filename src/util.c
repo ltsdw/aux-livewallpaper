@@ -94,7 +94,7 @@ void createLogFile(Path config_path)
     fclose(fp);
 }
 
-void daemonize(XWinwrap* xwinwrap)
+void daemonize(void)
 {
     /* fork off the parent process */
     pid_t pid = fork();
@@ -140,16 +140,13 @@ pid_t spawnProcess(const char* cmd, char* const args[])
     return pid;
 }
 
-void initXWinwrap(XWinwrap* xwinwrap)
+void initXWinwrap(Path config_path)
 {
-    if (!xwinwrap)
-        exit(EXIT_FAILURE);
-
     char log_file_flag[200];
     char media_file[200];
 
-    sprintf(log_file_flag, "%s%s%s", "--log-file=", xwinwrap->config_path, "/mpv.log");
-    sprintf(media_file, "%s/medias/%s", xwinwrap->config_path, media);
+    sprintf(log_file_flag, "%s%s%s", "--log-file=", config_path, "/mpv.log");
+    sprintf(media_file, "%s/medias/%s", config_path, media);
 
     char* xwinwrap_cmd[] = {"/usr/bin/xwinwrap", "-g", "1366x768", "-ni", "-s",
                             "-nf", "-b", "-un", "-ov", "-fdt", "-argb", "-d",
@@ -159,13 +156,13 @@ void initXWinwrap(XWinwrap* xwinwrap)
                             "--input-vo-keyboard=no", "--osd-level=0", "--hwdec=vaapi",
                             "--vo=vaapi", "-wid", "WID", "--loop-file=yes", media_file, NULL};
 
-    createLogFile(xwinwrap->config_path);
+    createLogFile(config_path);
 
     if ((spawnProcess(xwinwrap_cmd[0], xwinwrap_cmd) ) < 0)
         exit(EXIT_FAILURE);
 }
 
-void terminateXWinwrap(XWinwrap* xwinwrap)
+void terminateXWinwrap(void)
 {
     char* cmd_kill_xwinwrap[] = {"/usr/bin/pkill", "-9", "xwinwrap", NULL};
     char* cmd_kill_mpv[] = {"/usr/bin/pkill", "-9", "mpv", NULL};
@@ -183,7 +180,7 @@ void terminateXWinwrap(XWinwrap* xwinwrap)
         exit(EXIT_FAILURE);
 }
 
-void cleanAndExit(XWinwrap* xwinwrap)
+void cleanAndExit(void)
 {
     char* cmd_kill_aux_lwallpaper[] = {"/usr/bin/pkill", "-15", "aux_lwallpaper", NULL};
 
@@ -194,7 +191,7 @@ void cleanAndExit(XWinwrap* xwinwrap)
     if (spawnProcess(cmd_kill_aux_lwallpaper[0], cmd_kill_aux_lwallpaper) < 0)
         exit(EXIT_FAILURE);
 
-    terminateXWinwrap(xwinwrap);
+    terminateXWinwrap();
 
     exit(EXIT_SUCCESS);
 }

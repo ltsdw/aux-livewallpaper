@@ -30,10 +30,10 @@ Path getConfigPath(void);
 bool checkFile(Path, File);
 bool checkProcess(Cmd);
 void createLogFile(Path);
-void daemonize(XWinwrap*);
-void cleanAndExit(XWinwrap*);
+void daemonize(void);
+void cleanAndExit(void);
 void absBinPath(Path, char*, const char*);
-void initXWinwrap(XWinwrap*);
-void terminateXWinwrap(XWinwrap*);
+void initXWinwrap(Path);
+void terminateXWinwrap();
 
 #endif

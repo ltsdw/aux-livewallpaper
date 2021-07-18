@@ -4,34 +4,29 @@
 int main(int arg, const char* const argv[])
 {
     char flag[3];
-        
-    struct XWinwrap* xwinwrap;
-    xwinwrap = (XWinwrap*) malloc(sizeof(XWinwrap));
+    const Path config_path = getConfigPath();
 
-    strcpy(xwinwrap->config_path, getConfigPath());
-
-    daemonize(xwinwrap);
+    daemonize();
 
     if (argv[1])
         strncpy(flag, argv[1], 2);
 
     if (!strncmp(flag, "-d", 2))
     {
-        cleanAndExit(xwinwrap);
+        cleanAndExit();
         exit(EXIT_FAILURE);
     } else if (!strncmp(flag, "-s", 2))
     {
-    
         if (!checkProcess("xwinwrap"))
         {
-            initXWinwrap(xwinwrap);
+            initXWinwrap(config_path);
             while (true)
             {
-                if (checkFile(xwinwrap->config_path, "mpv.log"))
+                if (checkFile(config_path, "mpv.log"))
                 {
-                    terminateXWinwrap(xwinwrap);
+                    terminateXWinwrap();
                     sleep(2);
-                    initXWinwrap(xwinwrap);
+                    initXWinwrap(config_path);
                 }
                 sleep(20);
             }
@@ -39,8 +34,6 @@ int main(int arg, const char* const argv[])
             exit(EXIT_FAILURE);
     } else
         exit(EXIT_FAILURE);
-
-    free(xwinwrap);
 
     return EXIT_SUCCESS;
 }
