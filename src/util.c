@@ -17,7 +17,7 @@ int terminateProcess(pid_t pid)
  * will return null on a second call */
 Path getConfigPath(void)
 {
-    const Path path_ = "/.config/live_wallpaper/";
+    const Path path_ = "/.config/live_wallpaper";
     Path path = getenv("HOME");
     strcat(path, path_);
     realpath(path, NULL);
@@ -92,7 +92,7 @@ void daemonize(void)
     pid_t pid = fork();
 
     if (pid < 0)
-        die("error at forking parent process.\n");
+        die("error at forking parent process.");
     /* on success let the parent terminate */
     else if (pid)
         exit(EXIT_SUCCESS);
@@ -100,7 +100,7 @@ void daemonize(void)
     {
         /* on success the child process becomes session leader */
         if (setsid() < 0)
-            die("failed to set child process.\n");
+            die("failed to set child process.");
         /* close all open file descriptors */
         for (int fd = sysconf(_SC_OPEN_MAX); fd >= 0; fd--)
         {
@@ -119,13 +119,13 @@ pid_t spawnProcess(const char* cmd, char* const args[])
     }
 
     if (pid < 0)
-        die("something went wrong.\n");
+        die("something went wrong.");
     else if (pid)
         waitpid(pid, NULL, WNOHANG);
     else
     {
         execv(cmd, args);
-        die("something went wrong.\n");
+        die("something went wrong.");
     }
 
     return pid;
@@ -136,7 +136,7 @@ void initXWinwrap(Path config_path)
     char log_file_flag[200];
     char media_file[200];
 
-    sprintf(log_file_flag, "%s%s%s", "--log-file=", config_path, "/mpv.log");
+    sprintf(log_file_flag, "%s%s/%s", "--log-file=", config_path, "mpv.log");
     sprintf(media_file, "%s/medias/%s", config_path, media);
 
     char* xwinwrap_cmd[] = {"/usr/bin/xwinwrap", "-g", "1366x768", "-ni", "-s",
@@ -150,7 +150,7 @@ void initXWinwrap(Path config_path)
     createLogFile(config_path);
 
     if ((spawnProcess(xwinwrap_cmd[0], xwinwrap_cmd) ) < 0)
-        die("error at spawning xwinwrap.\n");
+        die("error at spawning xwinwrap.");
 }
 
 void terminateXWinwrap(void)
@@ -162,10 +162,10 @@ void terminateXWinwrap(void)
      * implement a more procise way to terminate processes by pid
      * from the xwinwrap->parr[] structure */
     if (spawnProcess(cmd_kill_xwinwrap[0], cmd_kill_xwinwrap) < 0)
-        die("error at killing process xwinwrap.\n");
+        die("error at killing process xwinwrap.");
 
     if (spawnProcess(cmd_kill_mpv[0], cmd_kill_mpv) < 0) 
-        die("error at killing process mpv.\n");
+        die("error at killing process mpv.");
 }
 
 void cleanAndExit(void)
@@ -177,7 +177,7 @@ void cleanAndExit(void)
 
 
     if (spawnProcess(cmd_kill_aux_lwallpaper[0], cmd_kill_aux_lwallpaper) < 0)
-        die("error spawning processes.\n");
+        die("error spawning processes.");
 
     terminateXWinwrap();
 
@@ -215,14 +215,14 @@ void absBinPath(char* buf, char* buf_, const char* argv0)
     else
     {
         if (!getcwd(tmp, sizeof(tmp)))
-            die("getcdw error.\n");
+            die("getcdw error.");
 
         strcat(tmp, "/");
         strcat(tmp, argv0);
     }
 
     if (!realpath(tmp, buf))
-        die("realpath error.\n");
+        die("realpath error.");
 
     removeExeFromAbsPath(tmp, buf_);
 }
@@ -250,5 +250,5 @@ void help(void)
     die("version: %s\n"
         "-h --help: for help.\n"
         "-s: to start the thing.\n"
-        "-d: to stop the thing.\n", VERSION);
+        "-d: to stop the thing.", VERSION);
 }

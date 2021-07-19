@@ -16,15 +16,16 @@ int main(int arg, const char* const argv[])
     if (!strncmp(flag, "-d", 2))
     {
         cleanAndExit();
-        die("something went wrong at stopping processes.\n");
+        die("something went wrong at stopping processes.");
     } else if (!strncmp(flag, "-s", 2))
     {
-        daemonize();
-        const Path config_path = getConfigPath();
-
         if (!checkProcess("xwinwrap"))
         {
+            daemonize();
+            const Path config_path = getConfigPath();
+
             initXWinwrap(config_path);
+
             while (true)
             {
                 if (checkFile(config_path, "mpv.log"))
@@ -36,7 +37,7 @@ int main(int arg, const char* const argv[])
                 sleep(20);
             }
         } else
-            die("process already running.\n");
+            die("aux_lwallpaper already running.");
     } else
         help();
 
