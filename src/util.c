@@ -101,6 +101,10 @@ void daemonize(void)
         /* on success the child process becomes session leader */
         if (setsid() < 0)
             die("failed to set child process.");
+
+        /* changing dir to root directory */
+        chdir("/");
+
         /* close all open file descriptors */
         for (int fd = sysconf(_SC_OPEN_MAX); fd >= 0; fd--)
         {
@@ -112,11 +116,6 @@ void daemonize(void)
 pid_t spawnProcess(const char* cmd, char* const args[])
 {
     pid_t pid = fork();
-
-    for (int fd = sysconf(_SC_OPEN_MAX); fd >= 0; fd--)
-    {
-        close(fd);
-    }
 
     if (pid < 0)
         die("something went wrong.");
@@ -248,7 +247,8 @@ void die(const char fmt[], ...)
 void help(void)
 {
     die("version: %s\n"
-        "-h --help: for help.\n"
-        "-s: to start the thing.\n"
-        "-d: to stop the thing.", VERSION);
+        "    -h --help          for help.\n"
+        "    -s                 to start the thing.\n"
+        "    -d                 to stop the thing.\n"
+        "    -v --version       for versioning.", VERSION);
 }

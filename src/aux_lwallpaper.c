@@ -6,12 +6,15 @@ int main(int arg, const char* const argv[])
     char flag[10];
 
     if (argv[1])
-        strncpy(flag, argv[1], 2);
+        strncpy(flag, argv[1], 9);
     else
         help();
 
     if (!strncmp(flag, "-h", 2) || !strncmp(flag, "--help", 6))
         help();
+
+    if (!strncmp(flag, "-v", 2) || !strncmp(flag, "--version", 9))
+        die("version: %s", VERSION);
 
     if (!strncmp(flag, "-d", 2))
     {
