@@ -1,8 +1,10 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-#define VERSION "0.0.1.1"
+#define _GNU_SOURCE
 
+
+#define VERSION "1.0.0"
 
 #include <stdlib.h>
 #include <string.h>

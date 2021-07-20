@@ -19,7 +19,7 @@ Path getConfigPath(void)
 {
     const Path path_ = "/.config/live_wallpaper";
     Path path = getenv("HOME");
-    strcat(path, path_);
+    strncat(path, path_, 200);
     realpath(path, NULL);
 
     return path;
@@ -28,10 +28,10 @@ Path getConfigPath(void)
 bool checkFile(Path path, File file)
 {
     char buf_[2];
-    char buf[200];
+    char* buf;
     bool found = false;
 
-    sprintf(buf, "%s %s/%s %s", "tail -1", path, file, "| grep -iE -m1 \"operation failed|Error|BadDrawable\"");
+    asprintf(&buf, "%s %s/%s %s", "tail -1", path, file, "| grep -iE -m1 \"operation failed|Error|BadDrawable\"");
 
     FILE* pp = popen(buf, "r");
 
@@ -50,10 +50,10 @@ bool checkFile(Path path, File file)
 bool checkProcess(Cmd cmd)
 {
     char buf_[2];
+    char* buf;
     bool found = false;
-    char buf[40];
 
-    sprintf(buf, "%s %s %s", "ps aux | grep", cmd, "| grep -v grep");
+    asprintf(&buf, "%s %s %s", "ps aux | grep", cmd, "| grep -v grep");
 
     FILE* pp = popen(buf, "r");
 
@@ -72,15 +72,13 @@ bool checkProcess(Cmd cmd)
 void createLogFile(Path config_path)
 {
     FILE* fp;
-    char old[50];
-    char new[50];
+    char* old;
+    char* new;
 
-    sprintf(old, "%s/%s", config_path, "mpv.log.OLD");
-    sprintf(new, "%s/%s", config_path, "mpv.log");
+    asprintf(&old, "%s/%s", config_path, "mpv.log.OLD");
+    asprintf(&new, "%s/%s", config_path, "mpv.log");
 
-    remove(old);
     rename(new, old);
-    remove(new);
 
     fp = fopen(new, "w");
     fclose(fp);
@@ -132,11 +130,11 @@ pid_t spawnProcess(const char* cmd, char* const args[])
 
 void initXWinwrap(Path config_path)
 {
-    char log_file_flag[200];
-    char media_file[200];
+    char* log_file_flag;
+    char* media_file;
 
-    sprintf(log_file_flag, "%s%s/%s", "--log-file=", config_path, "mpv.log");
-    sprintf(media_file, "%s/medias/%s", config_path, media);
+    asprintf(&log_file_flag, "%s%s/%s", "--log-file=", config_path, "mpv.log");
+    asprintf(&media_file, "%s/medias/%s", config_path, media);
 
     char* xwinwrap_cmd[] = {"/usr/bin/xwinwrap", "-g", "1366x768", "-ni", "-s",
                             "-nf", "-b", "-un", "-ov", "-fdt", "-argb", "-d",
@@ -187,6 +185,7 @@ void removeExeFromAbsPath(char* path, char* buf)
 {
     char* token = strtok(path, "/");
     char* tmp[200];
+    size_t bnd = sizeof(tmp) - 1;
     int c = 0;
 
     while (token != NULL)
@@ -196,28 +195,29 @@ void removeExeFromAbsPath(char* path, char* buf)
         c++;
     }
 
-    strcat(buf, "/");
+    strncat(buf, "/", bnd);
 
     for (int i = 0; i <= c-2; i++)
     {
-        strcat(buf, tmp[i]);
-        strcat(buf, "/");
+        strncat(buf, tmp[i], bnd);
+        strncat(buf, "/", bnd);
     }
 }
 
 void absBinPath(char* buf, char* buf_, const char* argv0)
 {
     char tmp[200];
+    size_t bnd = sizeof(tmp) - 1;
 
     if (argv0[0] == '/')
-        strncpy(buf, argv0, sizeof(tmp));
+        strncpy(buf, argv0, bnd);
     else
     {
-        if (!getcwd(tmp, sizeof(tmp)))
+        if (!getcwd(tmp, bnd))
             die("getcdw error.");
 
-        strcat(tmp, "/");
-        strcat(tmp, argv0);
+        strncat(tmp, "/", bnd);
+        strncat(tmp, argv0, bnd);
     }
 
     if (!realpath(tmp, buf))
