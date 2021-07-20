@@ -1,4 +1,3 @@
-#define _POSIX_SOURCE
 #include "util.h"
 #include "config.h"
 

@@ -2,7 +2,7 @@
 #define UTIL_H
 
 #define _GNU_SOURCE
-
+#define _POSIX_SOURCE
 
 #define VERSION "1.0.0"
 
