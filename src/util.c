@@ -152,7 +152,7 @@ void initXWinwrap(Path config_path)
 void terminateXWinwrap(void)
 {
     char* cmd_kill_xwinwrap[] = {"/usr/bin/pkill", "-9", "xwinwrap", NULL};
-    char* cmd_kill_mpv[] = {"/usr/bin/pkill", "-9", "mpv", NULL};
+    char* cmd_kill_mpv[] = {"/usr/bin/pkill", "-9", media, NULL};
 
     /* TODO 
      * implement a more procise way to terminate processes by pid
