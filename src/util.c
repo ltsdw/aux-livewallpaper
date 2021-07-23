@@ -2,7 +2,7 @@
 #include "config.h"
 
 
-int terminateProcess(pid_t pid)
+__attribute__((unused)) static int terminateProcess(pid_t pid)
 {
     const int status = 0;
 
@@ -120,7 +120,7 @@ void daemonize(void)
     }
 }
 
-pid_t spawnProcess(const char* cmd, char* const args[])
+static pid_t spawnProcess(const char* cmd, char* const args[])
 {
     pid_t pid = fork();
 
@@ -213,7 +213,7 @@ static void removeExeFromAbsPath(char* path, char* buf)
     }
 }
 
-void absBinPath(char* buf, char* buf_, const char* argv0)
+__attribute__((unused)) static void absBinPath(char* buf, char* buf_, const char* argv0)
 {
     char tmp[200];
     size_t bnd = sizeof(tmp) - 1;

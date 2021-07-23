@@ -4,7 +4,7 @@
 #define _GNU_SOURCE
 #define _POSIX_SOURCE
 
-#define VERSION "1.0.0"
+#define VERSION "1.0.1"
 
 #include <stdlib.h>
 #include <string.h>
@@ -29,8 +29,6 @@ typedef struct XWinwrap
     char* xwinwrap_cmd[30];
 } XWinwrap;
 
-int terminateProcess(pid_t);
-pid_t spawnProcess(const char* cmd, char* const args[]);
 Path getConfigPath(void);
 bool checkFile(Path, File);
 bool checkProcess(Cmd);
@@ -39,7 +37,6 @@ bool isMpvRunning(void);
 void createLogFile(Path);
 void daemonize(void);
 void cleanAndExit(void);
-void absBinPath(Path, char*, const char*);
 void initXWinwrap(Path);
 void terminateXWinwrap(void);
 void die(const char[], ...);
