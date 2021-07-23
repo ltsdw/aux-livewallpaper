@@ -68,6 +68,16 @@ bool checkProcess(Cmd cmd)
     return found;
 }
 
+bool isXwinwrapRunning(void)
+{
+    return checkProcess("xwinwrap");
+}
+
+bool isMpvRunning(void)
+{
+    return checkProcess(media);
+}
+
 void createLogFile(Path config_path)
 {
     FILE* fp;
@@ -180,7 +190,7 @@ void cleanAndExit(void)
     exit(EXIT_SUCCESS);
 }
 
-void removeExeFromAbsPath(char* path, char* buf)
+static void removeExeFromAbsPath(char* path, char* buf)
 {
     char* token = strtok(path, "/");
     char* tmp[200];

@@ -34,6 +34,8 @@ pid_t spawnProcess(const char* cmd, char* const args[]);
 Path getConfigPath(void);
 bool checkFile(Path, File);
 bool checkProcess(Cmd);
+bool isXwinwrapRunning(void);
+bool isMpvRunning(void);
 void createLogFile(Path);
 void daemonize(void);
 void cleanAndExit(void);

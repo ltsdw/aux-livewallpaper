@@ -22,7 +22,7 @@ int main(int arg, const char* const argv[])
         die("something went wrong at stopping processes.");
     } else if (!strncmp(flag, "-s", 2))
     {
-        if (!checkProcess("xwinwrap"))
+        if (!isXwinwrapRunning())
         {
             daemonize();
             const Path config_path = getConfigPath();
@@ -37,6 +37,14 @@ int main(int arg, const char* const argv[])
                     sleep(2);
                     initXWinwrap(config_path);
                 }
+
+                if (!isMpvRunning())
+                {
+                    terminateXWinwrap();
+                    sleep(2);
+                    initXWinwrap(config_path);
+                }
+
                 sleep(20);
             }
         } else
