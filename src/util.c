@@ -95,7 +95,7 @@ pid_t checkProcess(Cmd pname_)
             }
         }
 
-        if (fp) fclose(fp);
+        fclose(fp);
     }
 
     return 0;
