@@ -18,7 +18,7 @@ int main(int arg, const char* const argv[])
 
     if (!strncmp(flag, "-d", 2))
     {
-        cleanAndExit();
+        terminateAndExit();
         die("something went wrong at stopping processes.");
     } else if (!strncmp(flag, "-s", 2))
     {
@@ -33,14 +33,14 @@ int main(int arg, const char* const argv[])
             {
                 if (checkFile(config_path, "mpv.log"))
                 {
-                    terminateXWinwrap();
+                    pkill("xwinwrap");
                     sleep(2);
                     initXWinwrap(config_path);
                 }
 
-                if (!isMpvRunning())
+                if (!isXwinwrapRunning())
                 {
-                    terminateXWinwrap();
+                    pkill("xwinwrap");
                     sleep(2);
                     initXWinwrap(config_path);
                 }

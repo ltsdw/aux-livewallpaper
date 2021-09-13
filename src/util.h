@@ -4,7 +4,7 @@
 #define _GNU_SOURCE
 #define _POSIX_SOURCE
 
-#define VERSION "1.0.1"
+#define VERSION "1.0.3"
 
 #include <stdlib.h>
 #include <string.h>
@@ -14,6 +14,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <stdarg.h>
+#include <dirent.h>
 
 
 typedef char* Path;
@@ -31,14 +32,13 @@ typedef struct XWinwrap
 
 Path getConfigPath(void);
 bool checkFile(Path, File);
-bool checkProcess(Cmd);
+pid_t checkProcess(Cmd);
 bool isXwinwrapRunning(void);
-bool isMpvRunning(void);
 void createLogFile(Path);
 void daemonize(void);
-void cleanAndExit(void);
 void initXWinwrap(Path);
-void terminateXWinwrap(void);
+void terminateAndExit(void);
+void pkill(char*);
 void die(const char[], ...);
 void help(void);
 

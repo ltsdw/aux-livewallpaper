@@ -2,7 +2,7 @@
 #include "config.h"
 
 
-__attribute__((unused)) static int terminateProcess(pid_t pid)
+static int terminateProcess(pid_t pid)
 {
     const int status = 0;
 
@@ -46,36 +46,64 @@ bool checkFile(Path path, File file)
     return found;
 }
 
-bool checkProcess(Cmd cmd)
+/*
+ * pname_: name of the process to search for
+ * return: the pid found on success match and 0 on fail
+*/
+pid_t checkProcess(Cmd pname_)
 {
-    char buf_[2];
-    char* buf;
-    bool found = false;
+    DIR* dir;
+    struct dirent* ent;
+    char pname[512];
+    char buf[256];
 
-    asprintf(&buf, "%s %s %s", "ps aux | grep", cmd, "| grep -v grep");
+    FILE* fp;
 
-    FILE* pp = popen(buf, "r");
-
-    if (pp)
+    if (!(dir = opendir("/proc")))
     {
-        if (fgets(buf_, sizeof(buf_), pp))
-            found = true;
-    } else
-        die("something went wrong at running popen(%s, \"r\")", buf);
+        die("unable to open /proc directory");
+    }
 
-    pclose(pp);
+    while((ent = readdir(dir)) != NULL)
+    {
+        long pid;
+        char state;
 
-    return found;
+        long lpid = atol(ent->d_name);
+
+        if (lpid <= 0) continue;
+
+        snprintf(buf, sizeof buf, "/proc/%ld/stat", lpid);
+
+        fp = fopen(buf, "r");
+
+        if (fp)
+        {
+            if ((fscanf(fp, "%ld (%[^)]) %c", &pid, pname, &state) != 3))
+            {
+                fclose(fp);
+                closedir(dir);
+                die("failed to parse pid and process name");
+            }
+
+            if (!strncmp(pname_, pname, sizeof pname) && (state == 'R' || state == 'S'))
+            {
+                fclose(fp);
+                closedir(dir);
+                return pid;
+                break;
+            }
+        }
+
+        if (fp) fclose(fp);
+    }
+
+    return 0;
 }
 
 bool isXwinwrapRunning(void)
 {
     return checkProcess("xwinwrap");
-}
-
-bool isMpvRunning(void)
-{
-    return checkProcess(media);
 }
 
 void createLogFile(Path config_path)
@@ -150,7 +178,7 @@ void initXWinwrap(Path config_path)
                             "--",
                             "/usr/bin/mpv", "--msg-level=ffmpeg=fatal,vo=fatal", log_file_flag,
                             "--audio=no", "--osc=no", "--cursor-autohide=no", "--no-input-cursor",
-                            "--input-vo-keyboard=no", "--osd-level=0", "--hwdec=vaapi",
+                            "--input-vo-keyboard=no", "--osd-level=0", "--hwdec=vaapi-copy",
                             "--vo=vaapi", "-wid", "WID", "--loop-file=yes", media_file, NULL};
 
     createLogFile(config_path);
@@ -159,33 +187,16 @@ void initXWinwrap(Path config_path)
         die("error at spawning xwinwrap.");
 }
 
-void terminateXWinwrap(void)
+void pkill(Cmd pname_)
 {
-    char* cmd_kill_xwinwrap[] = {"/usr/bin/pkill", "-9", "xwinwrap", NULL};
-    char* cmd_kill_mpv[] = {"/usr/bin/pkill", "-9", media, NULL};
-
-    /* TODO 
-     * implement a more procise way to terminate processes by pid
-     * from the xwinwrap->parr[] structure */
-    if (spawnProcess(cmd_kill_xwinwrap[0], cmd_kill_xwinwrap) < 0)
-        die("error at killing process xwinwrap.");
-
-    if (spawnProcess(cmd_kill_mpv[0], cmd_kill_mpv) < 0) 
-        die("error at killing process mpv.");
+    pid_t pid = checkProcess(pname_);
+    if (pid) terminateProcess(pid);
 }
 
-void cleanAndExit(void)
+void terminateAndExit(void)
 {
-    char* cmd_kill_aux_lwallpaper[] = {"/usr/bin/pkill", "-15", "aux_lwallpaper", NULL};
-
-    /* TODO 
-     * implement a way to kill process using the Config structure */
-
-
-    if (spawnProcess(cmd_kill_aux_lwallpaper[0], cmd_kill_aux_lwallpaper) < 0)
-        die("error spawning processes.");
-
-    terminateXWinwrap();
+    pkill("xwinwrap");
+    pkill("aux_lwallpaper");
 
     exit(EXIT_SUCCESS);
 }

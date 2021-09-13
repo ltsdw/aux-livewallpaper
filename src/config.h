@@ -1,6 +1,6 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-char media[] = "Toonorth-Far-From-Home-720p-24fps.mp4";
+char media[] = "demon-mask-pixel-720p-18fps.mp4";
 
 #endif
