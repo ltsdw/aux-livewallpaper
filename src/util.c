@@ -2,55 +2,43 @@
 #include "config.h"
 
 
-static int terminateProcess(pid_t pid)
+static int terminateProcess(pid_t pid, int signum)
 {
     const int status = 0;
 
     if (pid > 0)
-        kill(pid, SIGKILL);
+        kill(pid, signum);
 
     return status;
 }
 
-/* this function should be used only once
- * will return null on a second call */
-Path getConfigPath(void)
+void getConfigPath(char* buf)
 {
-    const Path path_ = "/.config/live_wallpaper";
-    Path path = getenv("HOME");
-    strncat(path, path_, 200);
-    realpath(path, NULL);
+    char* tmp;
+    const Path path = "/.config/live_wallpaper";
+    Path home = getenv("HOME");
+    asprintf(&tmp, "%s%s", home, path);
 
-    return path;
+    strncpy(buf, tmp, 200);
 }
 
 bool checkFile(Path path, File file)
 {
-    char buf_[2];
-    char* buf;
-    bool found = false;
+    char buf[4096];
+    char* log_file;
 
-    asprintf(&buf, "%s %s/%s %s", "tail -1", path, file, "| grep -iE -m1 \"operation failed|Error|BadDrawable\"");
+    asprintf(&log_file, "%s/%s", path, file);
 
-    FILE* pp = popen(buf, "r");
+    getLastLine(log_file, buf);
 
-    if (pp)
-    {
-        if (fgets(buf_, sizeof(buf_), pp))
-            found = true;
-    } else
-        die("something went wrong at running popen(%s, \"r\")", buf);
-
-    pclose(pp);
-
-    return found;
+    return (strstr(buf, "operation failed") || strstr(buf, "Error") || strstr(buf, "BadDrawable"));
 }
 
 /*
  * pname_: name of the process to search for
  * return: the pid found on success match and 0 on fail
 */
-pid_t checkProcess(Cmd pname_)
+pid_t checkProcess(const Cmd pname_)
 {
     DIR* dir;
     struct dirent* ent;
@@ -91,7 +79,6 @@ pid_t checkProcess(Cmd pname_)
                 fclose(fp);
                 closedir(dir);
                 return pid;
-                break;
             }
         }
 
@@ -106,6 +93,11 @@ bool isXwinwrapRunning(void)
     return checkProcess("xwinwrap");
 }
 
+static bool isAuxLwallpaperRunning(void)
+{
+    return checkProcess("aux_lwallpaper");
+}
+
 void createLogFile(Path config_path)
 {
     FILE* fp;
@@ -118,6 +110,38 @@ void createLogFile(Path config_path)
     rename(new, old);
 
     fp = fopen(new, "w");
+    fclose(fp);
+}
+
+void getLastLine(Path config_log_file, char* buf)
+{
+    char c;
+    int len = 0;
+
+    FILE* fp = fopen(config_log_file, "r");
+
+    if (!fp) die("failed to open %s", config_log_file);
+
+    fseek(fp, -1, SEEK_END);
+    c = fgetc(fp);
+
+    while (c == '\n')
+    {
+        fseek(fp, -2, SEEK_CUR);
+        c = fgetc(fp);
+    }
+
+    while (c != '\n')
+    {
+        fseek(fp, -2, SEEK_CUR);
+        ++len;
+        c = fgetc(fp);
+    }
+
+    fseek(fp, 1, SEEK_CUR);
+
+    if (!fgets(buf, len, fp)) die("failed to get last line");
+
     fclose(fp);
 }
 
@@ -187,16 +211,22 @@ void initXWinwrap(Path config_path)
         die("error at spawning xwinwrap.");
 }
 
-void pkill(Cmd pname_)
+void pkill(Cmd pname_, Signal signum)
 {
     pid_t pid = checkProcess(pname_);
-    if (pid) terminateProcess(pid);
+
+    if (pid) { terminateProcess(pid, signum); }
 }
 
 void terminateAndExit(void)
 {
-    pkill("xwinwrap");
-    pkill("aux_lwallpaper");
+
+    if (isXwinwrapRunning()) pkill("xwinwrap", SIGKILL);
+
+    /* will result in a sigfault without sleeping here */
+    sleep(1);
+
+    if (isAuxLwallpaperRunning()) pkill("aux_lwallpaper", SIGTERM);
 
     exit(EXIT_SUCCESS);
 }

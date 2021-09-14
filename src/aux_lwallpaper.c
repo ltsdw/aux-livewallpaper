@@ -25,32 +25,27 @@ int main(int arg, const char* const argv[])
         if (!isXwinwrapRunning())
         {
             daemonize();
-            const Path config_path = getConfigPath();
 
-            initXWinwrap(config_path);
+            char config_path[200];
+            getConfigPath(config_path);
 
             while (true)
             {
                 if (checkFile(config_path, "mpv.log"))
                 {
-                    pkill("xwinwrap");
-                    sleep(2);
+                    pkill("xwinwrap", SIGKILL);
+
+                    sleep(1);
+
                     initXWinwrap(config_path);
                 }
 
-                if (!isXwinwrapRunning())
-                {
-                    pkill("xwinwrap");
-                    sleep(2);
-                    initXWinwrap(config_path);
-                }
+                if (!isXwinwrapRunning()) initXWinwrap(config_path);
 
                 sleep(20);
             }
-        } else
-            die("aux_lwallpaper already running.");
-    } else
-        help();
+        } else die("aux_lwallpaper already running.");
+    } else help();
 
     return EXIT_SUCCESS;
 }
