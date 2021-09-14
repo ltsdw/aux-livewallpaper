@@ -6,8 +6,8 @@ static int terminateProcess(pid_t pid, Signal signum)
 {
     const int status = 0;
 
-    if (pid > 0)
-        kill(pid, signum);
+    if (pid > 0) kill(pid, signum);
+    else return -1;
 
     return status;
 }
@@ -61,10 +61,7 @@ pid_t checkProcess(const Cmd pname_)
 
     FILE* fp;
 
-    if (!(dir = opendir("/proc")))
-    {
-        die("unable to open /proc directory");
-    }
+    if (!(dir = opendir("/proc"))) die("unable to open /proc directory");
 
     while((ent = readdir(dir)) != NULL)
     {
@@ -102,20 +99,11 @@ pid_t checkProcess(const Cmd pname_)
     return 0;
 }
 
-bool isXwinwrapRunning(void)
-{
-    return checkProcess("xwinwrap");
-}
+bool isXwinwrapRunning(void) { return checkProcess("xwinwrap"); }
 
-bool isWineserverRunning(void)
-{
-    return checkProcess("wineserver");
-}
+bool isWineserverRunning(void) { return checkProcess("wineserver"); }
 
-static bool isAuxLwallpaperRunning(void)
-{
-    return checkProcess("aux_lwallpaper");
-}
+static bool isAuxLwallpaperRunning(void) { return checkProcess("aux_lwallpaper"); }
 
 void createLogFile(Path config_path)
 {
@@ -201,10 +189,8 @@ static pid_t spawnProcess(const char* cmd, char* const args[])
 {
     pid_t pid = fork();
 
-    if (pid < 0)
-        die("something went wrong.");
-    else if (pid)
-        waitpid(pid, NULL, WNOHANG);
+    if (pid < 0) die("something went wrong.");
+    else if (pid) waitpid(pid, NULL, WNOHANG);
     else
     {
         execv(cmd, args);
@@ -234,8 +220,7 @@ void initXWinwrap(Path config_path)
 
         createLogFile(config_path);
 
-        if ((spawnProcess(xwinwrap_cmd[0], xwinwrap_cmd) ) < 0)
-            die("error at spawning xwinwrap.");
+        if ((spawnProcess(xwinwrap_cmd[0], xwinwrap_cmd) ) < 0) die("error at spawning xwinwrap.");
 
         free(log_file_flag);
         free(media_file);
@@ -246,7 +231,7 @@ void pkill(Cmd pname_, Signal signum)
 {
     pid_t pid = checkProcess(pname_);
 
-    if (pid) { terminateProcess(pid, signum); }
+    if (pid) terminateProcess(pid, signum);
 }
 
 void terminateAndExit(void)
@@ -254,7 +239,7 @@ void terminateAndExit(void)
 
     if (isXwinwrapRunning()) pkill("xwinwrap", SIGKILL);
 
-    /* will result in a sigfault without sleeping here */
+    /* will result in a segfault without sleeping here */
     sleep(1);
 
     if (isAuxLwallpaperRunning()) pkill("aux_lwallpaper", SIGTERM);
