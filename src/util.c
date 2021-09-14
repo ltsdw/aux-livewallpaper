@@ -107,6 +107,11 @@ bool isXwinwrapRunning(void)
     return checkProcess("xwinwrap");
 }
 
+bool isWineserverRunning(void)
+{
+    return checkProcess("wineserver");
+}
+
 static bool isAuxLwallpaperRunning(void)
 {
     return checkProcess("aux_lwallpaper");

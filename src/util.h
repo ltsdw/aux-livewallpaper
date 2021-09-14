@@ -4,7 +4,7 @@
 #define _GNU_SOURCE
 #define _POSIX_SOURCE
 
-#define VERSION "1.0.4"
+#define VERSION "1.0.5"
 
 #include <stdlib.h>
 #include <string.h>
@@ -35,6 +35,7 @@ void getConfigPath(char*);
 bool checkFile(Path, File);
 pid_t checkProcess(Cmd);
 bool isXwinwrapRunning(void);
+bool isWineserverRunning(void);
 void createLogFile(Path);
 void getLastLine(Path, char*);
 void daemonize(void);

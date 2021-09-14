@@ -40,7 +40,9 @@ int main(int arg, const char* const argv[])
                     initXWinwrap(config_path);
                 }
 
-                if (!isXwinwrapRunning()) initXWinwrap(config_path);
+                if (!isXwinwrapRunning() && !isWineserverRunning()) initXWinwrap(config_path);
+
+                if (isWineserverRunning() && isXwinwrapRunning()) pkill("xwinwrap", SIGKILL);
 
                 sleep(20);
             }
