@@ -2,7 +2,7 @@
 #include "config.h"
 
 
-static int terminateProcess(pid_t pid, int signum)
+static int terminateProcess(pid_t pid, Signal signum)
 {
     const int status = 0;
 
