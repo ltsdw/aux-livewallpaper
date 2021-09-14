@@ -15,11 +15,18 @@ static int terminateProcess(pid_t pid, Signal signum)
 void getConfigPath(char* buf)
 {
     char* tmp;
+
     const Path path = "/.config/live_wallpaper";
     Path home = getenv("HOME");
+
     asprintf(&tmp, "%s%s", home, path);
 
-    strncpy(buf, tmp, 200);
+    if (tmp)
+    {
+        strncpy(buf, tmp, 200);
+
+        free(tmp);
+    }
 }
 
 bool checkFile(Path path, File file)
@@ -29,9 +36,16 @@ bool checkFile(Path path, File file)
 
     asprintf(&log_file, "%s/%s", path, file);
 
-    getLastLine(log_file, buf);
+    if (log_file)
+    {
+        getLastLine(log_file, buf);
 
-    return (strstr(buf, "operation failed") || strstr(buf, "Error") || strstr(buf, "BadDrawable"));
+        free(log_file);
+
+        return (strstr(buf, "operation failed") || strstr(buf, "Error") || strstr(buf, "BadDrawable"));
+    }
+
+    return false;
 }
 
 /*
@@ -107,10 +121,16 @@ void createLogFile(Path config_path)
     asprintf(&old, "%s/%s", config_path, "mpv.log.OLD");
     asprintf(&new, "%s/%s", config_path, "mpv.log");
 
-    rename(new, old);
+    if (old && new)
+    {
+        rename(new, old);
 
-    fp = fopen(new, "w");
-    fclose(fp);
+        fp = fopen(new, "w");
+
+        fclose(fp);
+        free(old);
+        free(new);
+    }
 }
 
 void getLastLine(Path config_log_file, char* buf)
@@ -197,18 +217,24 @@ void initXWinwrap(Path config_path)
     asprintf(&log_file_flag, "%s%s/%s", "--log-file=", config_path, "mpv.log");
     asprintf(&media_file, "%s/medias/%s", config_path, media);
 
-    char* xwinwrap_cmd[] = {"/usr/bin/xwinwrap", "-g", "1366x768", "-ni", "-s",
-                            "-nf", "-b", "-un", "-ov", "-fdt", "-argb", "-d",
-                            "--",
-                            "/usr/bin/mpv", "--msg-level=ffmpeg=fatal,vo=fatal", log_file_flag,
-                            "--audio=no", "--osc=no", "--cursor-autohide=no", "--no-input-cursor",
-                            "--input-vo-keyboard=no", "--osd-level=0", "--hwdec=vaapi-copy",
-                            "--vo=vaapi", "-wid", "WID", "--loop-file=yes", media_file, NULL};
+    if (log_file_flag && media_file)
+    {
+        char* xwinwrap_cmd[] = {"/usr/bin/xwinwrap", "-g", "1366x768", "-ni", "-s",
+                                "-nf", "-b", "-un", "-ov", "-fdt", "-argb", "-d",
+                                "--",
+                                "/usr/bin/mpv", "--msg-level=ffmpeg=fatal,vo=fatal", log_file_flag,
+                                "--audio=no", "--osc=no", "--cursor-autohide=no", "--no-input-cursor",
+                                "--input-vo-keyboard=no", "--osd-level=0", "--hwdec=vaapi-copy",
+                                "--vo=vaapi", "-wid", "WID", "--loop-file=yes", media_file, NULL};
 
-    createLogFile(config_path);
+        createLogFile(config_path);
 
-    if ((spawnProcess(xwinwrap_cmd[0], xwinwrap_cmd) ) < 0)
-        die("error at spawning xwinwrap.");
+        if ((spawnProcess(xwinwrap_cmd[0], xwinwrap_cmd) ) < 0)
+            die("error at spawning xwinwrap.");
+
+        free(log_file_flag);
+        free(media_file);
+    }
 }
 
 void pkill(Cmd pname_, Signal signum)
