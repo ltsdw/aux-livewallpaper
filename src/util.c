@@ -4,12 +4,10 @@
 
 static int terminateProcess(pid_t pid, Signal signum)
 {
-    const int status = 0;
-
     if (pid > 0) kill(pid, signum);
     else return -1;
 
-    return status;
+    return 0;
 }
 
 void getConfigPath(char* buf)
