@@ -13,11 +13,19 @@ static void makePidfileDir(void)
 
 static void makeLwallpaperDir(void)
 {
-    const Filepath xdg_config_home = getenv("XDG_CONFIG_HOME");
+    Filepath xdg_config_home = getenv("XDG_CONFIG_HOME");
+    Filepath config_path = {0};
 
-    Filepath config_path;
+    if (!xdg_config_home)
+    {
+        const Filepath user = getenv("USER");
+        if (user)
+        {
+            asprintf(&config_path, "/%s/%s/%s/", "home", user, ".config");
 
-    asprintf(&config_path, "%s/%s", xdg_config_home, "live_wallpaper");
+            free(user);
+        } else die("getenv(\"USER\") failed");
+    } else asprintf(&config_path, "%s/%s", xdg_config_home, "live_wallpaper");
 
     if (config_path)
     {
@@ -178,7 +186,6 @@ static pid_t checkProcess(const Cmd pname_)
 
         fclose(fp);
     }
-
 
     // case search in pid_file doesn't return
     return checkProcess_alt(pname_);
