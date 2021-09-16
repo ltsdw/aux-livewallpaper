@@ -20,6 +20,8 @@ int main(int arg, const char* const argv[])
     {
         if (!isXwinwrapRunning())
         {
+            setup();
+
             writePid(getPid(), "aux_lwallpaper");
 
             daemonize();

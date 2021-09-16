@@ -1,6 +1,73 @@
 #include "util.h"
 #include "config.h"
 
+static void makePidfileDir(void)
+{
+    struct stat st;
+
+    if (stat("/tmp/lwallpaper", &st) == -1)
+    {
+        mkdir("/tmp/lwallpaper", 0700);
+    }
+}
+
+static void makeLwallpaperDir(void)
+{
+    const Filepath xdg_config_home = getenv("XDG_CONFIG_HOME");
+
+    Filepath config_path;
+
+    asprintf(&config_path, "%s/%s", xdg_config_home, "live_wallpaper");
+
+    if (config_path)
+    {
+        struct stat st;
+        if (stat(config_path, &st) == -1)
+        {
+            Filepath medias_path;
+
+            mkdir(config_path, 0700);
+
+            asprintf(&medias_path, "%s/%s", config_path, "medias");
+
+            if (medias_path)
+            {
+                mkdir(medias_path, 0700);
+
+                free(medias_path);
+                free(config_path);
+            } else die("failed to create lwallpaper/medias directory");
+        }
+    } else die("unable to create configuration directory");
+}
+
+static bool mediaExist(void)
+{
+    Filename media_file;
+
+    char config_path[200];
+    getConfigPath(config_path);
+
+    asprintf(&media_file, "%s/%s/%s", config_path, "medias", media);
+
+    if (media_file)
+    {
+        return (access(media_file, F_OK) == 0);
+        free(media_file);
+    }
+
+    return false;
+}
+
+void setup(void)
+{
+    makeLwallpaperDir();
+
+    makePidfileDir();
+
+    if (!mediaExist()) die("media %s not found", media);
+}
+
 pid_t getPid(void)
 {
     return getpid()+1;
@@ -76,7 +143,6 @@ static pid_t checkProcess_alt(const Cmd pname_)
             }
         }
 
-        fclose(fp);
     }
 
     return 0;
@@ -92,7 +158,10 @@ static pid_t checkProcess(const Cmd pname_)
 
     FILE* fp = fopen(pid_file, "r");
 
-    if (!fp) die("unable to open %s pid_file", pid_file);
+    if (!fp)
+    {
+        return checkProcess_alt(pname_);
+    }
     else
     {
         pid_t pid;
@@ -106,9 +175,10 @@ static pid_t checkProcess(const Cmd pname_)
                 return pid;
             }
         }
+
+        fclose(fp);
     }
 
-    fclose(fp);
 
     // case search in pid_file doesn't return
     return checkProcess_alt(pname_);
@@ -172,7 +242,7 @@ static void getLastLine(const Filepath config_log_file, char* buf)
 
     if (!fgets(buf, len, fp)) die("failed to get last line");
 
-    fclose(fp);
+    if (fp) fclose(fp);
 }
 
 bool checkFile(const Filepath path, const Filename file)
@@ -244,8 +314,7 @@ void writePid(const pid_t pid, const Cmd cmd)
 
     fp = fopen(pid_file, "a");
 
-    if (!fp) die("unable to open/create %s pid_file", pid_file);
-    else
+    if (fp)
     {
         pid_t t_pid;
 
@@ -259,9 +328,11 @@ void writePid(const pid_t pid, const Cmd cmd)
         }
 
         fprintf(fp, "%d %s\n", pid, cmd);
-    }
 
-    fclose(fp);
+        fclose(fp);
+
+    } else die("unable to open/create %s pid_file", pid_file);
+
 }
 
 static void removePid(const pid_t pid)
@@ -275,25 +346,20 @@ static void removePid(const pid_t pid)
     fp = fopen(pid_file, "r");
     tmp_fp = fopen(tmp_pid_file, "w");
 
-    if (!fp) die("unable to open %s pid_file", pid_file);
-    else
+    if (fp)
     {
         pid_t t_pid;
         char cmd[256];
 
         while((fscanf(fp, "%d %s\n", &t_pid, cmd) == 2))
         {
-            if (t_pid != pid)
-            {
-                fprintf(tmp_fp, "%d %s\n", t_pid, cmd);
-            }
+            if (t_pid != pid) fprintf(tmp_fp, "%d %s\n", t_pid, cmd);
         }
 
         rename(tmp_pid_file, pid_file);
+        fclose(fp);
+        fclose(tmp_fp);
     }
-
-    fclose(fp);
-    fclose(tmp_fp);
 }
 
 void initXWinwrap(Filepath config_path)

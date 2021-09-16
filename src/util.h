@@ -4,7 +4,7 @@
 #define _GNU_SOURCE
 #define _POSIX_SOURCE
 
-#define VERSION "1.0.6"
+#define VERSION "1.0.7"
 
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +15,7 @@
 #include <signal.h>
 #include <stdarg.h>
 #include <dirent.h>
+#include <sys/stat.h>
 
 
 typedef char* Filepath;
@@ -37,6 +38,7 @@ bool isXwinwrapRunning(void);
 bool isWineserverRunning(void);
 void createLogFile(const Filepath);
 void daemonize(void);
+void setup(void);
 pid_t getPid(void);
 void initXWinwrap(const Filepath);
 void writePid(const pid_t, const Cmd);
