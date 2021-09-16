@@ -4,7 +4,7 @@
 #define _GNU_SOURCE
 #define _POSIX_SOURCE
 
-#define VERSION "1.0.5"
+#define VERSION "1.0.6"
 
 #include <stdlib.h>
 #include <string.h>
@@ -17,8 +17,8 @@
 #include <dirent.h>
 
 
-typedef char* Path;
-typedef char* File;
+typedef char* Filepath;
+typedef char* Filename;
 typedef char* Cmd;
 typedef int Signal;
 
@@ -31,18 +31,22 @@ typedef struct XWinwrap
     char* xwinwrap_cmd[30];
 } XWinwrap;
 
-void getConfigPath(char*);
-bool checkFile(Path, File);
-pid_t checkProcess(Cmd);
+void getConfigPath(const Filepath);
+bool checkFile(const Filepath, const Filename);
+pid_t checkProcess(const Cmd);
+pid_t checkProcess_alt(const Cmd);
 bool isXwinwrapRunning(void);
 bool isWineserverRunning(void);
-void createLogFile(Path);
-void getLastLine(Path, char*);
+void createLogFile(const Filepath);
+void getLastLine(const Filepath, const Filename);
 void daemonize(void);
-void initXWinwrap(Path);
+pid_t getPid(void);
+void initXWinwrap(const Filepath);
 void terminateAndExit(void);
-void pkill(char*, Signal);
-void die(const char[], ...);
+void writePid(const pid_t, const Cmd);
+void removePid(const pid_t);
+void pkill(const Cmd, const Signal);
+void die(const char*, ...);
 void help(void);
 
 #endif

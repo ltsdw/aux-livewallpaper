@@ -14,8 +14,8 @@ void getConfigPath(char* buf)
 {
     char* tmp;
 
-    const Path path = "/.config/live_wallpaper";
-    Path home = getenv("HOME");
+    const Filepath path = "/.config/live_wallpaper";
+    Filepath home = getenv("HOME");
 
     asprintf(&tmp, "%s%s", home, path);
 
@@ -27,7 +27,7 @@ void getConfigPath(char* buf)
     }
 }
 
-bool checkFile(Path path, File file)
+bool checkFile(const Filepath path, const Filename file)
 {
     char buf[4096];
     char* log_file;
@@ -51,6 +51,38 @@ bool checkFile(Path path, File file)
  * return: the pid found on success match and 0 on fail
 */
 pid_t checkProcess(const Cmd pname_)
+{
+    const Filename pid_file = "/tmp/lwallpaper/lwallpaper.pid";
+
+    FILE* fp = fopen(pid_file, "r");
+
+    if (!fp) die("unable to open %s pid_file", pid_file);
+    else
+    {
+        pid_t pid;
+        char cmd[512];
+
+        while((fscanf(fp, "%d %s", &pid, cmd)) == 2)
+        {
+            if (!strncmp(pname_, cmd, sizeof cmd))
+            {
+                fclose(fp);
+                return pid;
+            }
+        }
+    }
+
+    fclose(fp);
+
+    // case search in pid_file doesn't return
+    return checkProcess_alt(pname_);
+}
+
+/*
+ * pname_: name of the process to search for
+ * return: the pid found on success match and 0 on fail
+*/
+pid_t checkProcess_alt(const Cmd pname_)
 {
     DIR* dir;
     struct dirent* ent;
@@ -103,9 +135,8 @@ bool isWineserverRunning(void) { return checkProcess("wineserver"); }
 
 static bool isAuxLwallpaperRunning(void) { return checkProcess("aux_lwallpaper"); }
 
-void createLogFile(Path config_path)
+void createLogFile(const Filepath config_path)
 {
-    FILE* fp;
     char* old;
     char* new;
 
@@ -114,17 +145,20 @@ void createLogFile(Path config_path)
 
     if (old && new)
     {
-        rename(new, old);
+        FILE* fp = fopen(new, "w");
 
-        fp = fopen(new, "w");
+        if (fp)
+        {
+            rename(new, old);
+            fclose(fp);
+        }
 
-        fclose(fp);
         free(old);
         free(new);
     }
 }
 
-void getLastLine(Path config_log_file, char* buf)
+void getLastLine(const Filepath config_log_file, char* buf)
 {
     char c;
     int len = 0;
@@ -183,7 +217,7 @@ void daemonize(void)
     }
 }
 
-static pid_t spawnProcess(const char* cmd, char* const args[])
+static pid_t spawnProcess(const Cmd cmd, char* const args[])
 {
     pid_t pid = fork();
 
@@ -195,10 +229,15 @@ static pid_t spawnProcess(const char* cmd, char* const args[])
         die("something went wrong.");
     }
 
-    return pid;
+    return pid+1;
 }
 
-void initXWinwrap(Path config_path)
+pid_t getPid(void)
+{
+    return getpid()+1;
+}
+
+void initXWinwrap(Filepath config_path)
 {
     char* log_file_flag;
     char* media_file;
@@ -218,34 +257,97 @@ void initXWinwrap(Path config_path)
 
         createLogFile(config_path);
 
-        if ((spawnProcess(xwinwrap_cmd[0], xwinwrap_cmd) ) < 0) die("error at spawning xwinwrap.");
+        pid_t pid = spawnProcess(xwinwrap_cmd[0], xwinwrap_cmd);
+
+        if (pid < 0) die("error at spawning xwinwrap.");
+        else writePid(pid, "xwinwrap");
 
         free(log_file_flag);
         free(media_file);
     }
 }
 
-void pkill(Cmd pname_, Signal signum)
+void pkill(const Cmd pname_, const Signal signum)
 {
     pid_t pid = checkProcess(pname_);
 
-    if (pid) terminateProcess(pid, signum);
+    if (pid)
+    {
+        removePid(pid);
+        terminateProcess(pid, signum);
+    }
+}
+
+void writePid(const pid_t pid, const Cmd cmd)
+{
+    FILE* fp;
+
+    const Filename pid_file = "/tmp/lwallpaper/lwallpaper.pid";
+
+    fp = fopen(pid_file, "a");
+
+    if (!fp) die("unable to open/create %s pid_file", pid_file);
+    else
+    {
+        pid_t t_pid;
+
+        while ((fscanf(fp, "%d", &t_pid) == 1))
+        {
+            if (t_pid == pid)
+            {
+                fclose(fp);
+                return;
+            }
+        }
+
+        fprintf(fp, "%d %s\n", pid, cmd);
+    }
+
+    fclose(fp);
+}
+
+void removePid(const pid_t pid)
+{
+    FILE* fp;
+    FILE* tmp_fp;
+
+    const Filename pid_file = "/tmp/lwallpaper/lwallpaper.pid";
+    const Filename tmp_pid_file = "/tmp/lwallpaper/tmp~lwallpaper.pid";
+
+    fp = fopen(pid_file, "r");
+    tmp_fp = fopen(tmp_pid_file, "w");
+
+    if (!fp) die("unable to open %s pid_file", pid_file);
+    else
+    {
+        pid_t t_pid;
+        char cmd[256];
+
+        while((fscanf(fp, "%d %s\n", &t_pid, cmd) == 2))
+        {
+            if (t_pid != pid)
+            {
+                fprintf(tmp_fp, "%d %s\n", t_pid, cmd);
+            }
+        }
+
+        rename(tmp_pid_file, pid_file);
+    }
+
+    fclose(fp);
+    fclose(tmp_fp);
 }
 
 void terminateAndExit(void)
 {
-
     if (isXwinwrapRunning()) pkill("xwinwrap", SIGKILL);
-
-    /* will result in a segfault without sleeping here */
-    sleep(1);
 
     if (isAuxLwallpaperRunning()) pkill("aux_lwallpaper", SIGTERM);
 
     exit(EXIT_SUCCESS);
 }
 
-static void removeExeFromAbsPath(char* path, char* buf)
+static void removeExeFromAbsPath(const Filepath path, char* buf)
 {
     char* token = strtok(path, "/");
     char* tmp[200];
@@ -290,7 +392,7 @@ __attribute__((unused)) static void absBinPath(char* buf, char* buf_, const char
     removeExeFromAbsPath(tmp, buf_);
 }
 
-void die(const char fmt[], ...)
+void die(const char* fmt, ...)
 {
     va_list ap;
 
