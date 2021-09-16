@@ -33,18 +33,14 @@ typedef struct XWinwrap
 
 void getConfigPath(const Filepath);
 bool checkFile(const Filepath, const Filename);
-pid_t checkProcess(const Cmd);
-pid_t checkProcess_alt(const Cmd);
 bool isXwinwrapRunning(void);
 bool isWineserverRunning(void);
 void createLogFile(const Filepath);
-void getLastLine(const Filepath, const Filename);
 void daemonize(void);
 pid_t getPid(void);
 void initXWinwrap(const Filepath);
-void terminateAndExit(void);
 void writePid(const pid_t, const Cmd);
-void removePid(const pid_t);
+void terminateAndExit(void);
 void pkill(const Cmd, const Signal);
 void die(const char*, ...);
 void help(void);

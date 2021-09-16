@@ -1,6 +1,10 @@
 #include "util.h"
 #include "config.h"
 
+pid_t getPid(void)
+{
+    return getpid()+1;
+}
 
 static int terminateProcess(pid_t pid, Signal signum)
 {
@@ -27,62 +31,11 @@ void getConfigPath(char* buf)
     }
 }
 
-bool checkFile(const Filepath path, const Filename file)
-{
-    char buf[4096];
-    char* log_file;
-
-    asprintf(&log_file, "%s/%s", path, file);
-
-    if (log_file)
-    {
-        getLastLine(log_file, buf);
-
-        free(log_file);
-
-        return (strstr(buf, "operation failed") || strstr(buf, "Error") || strstr(buf, "BadDrawable"));
-    }
-
-    return false;
-}
-
 /*
  * pname_: name of the process to search for
  * return: the pid found on success match and 0 on fail
 */
-pid_t checkProcess(const Cmd pname_)
-{
-    const Filename pid_file = "/tmp/lwallpaper/lwallpaper.pid";
-
-    FILE* fp = fopen(pid_file, "r");
-
-    if (!fp) die("unable to open %s pid_file", pid_file);
-    else
-    {
-        pid_t pid;
-        char cmd[512];
-
-        while((fscanf(fp, "%d %s", &pid, cmd)) == 2)
-        {
-            if (!strncmp(pname_, cmd, sizeof cmd))
-            {
-                fclose(fp);
-                return pid;
-            }
-        }
-    }
-
-    fclose(fp);
-
-    // case search in pid_file doesn't return
-    return checkProcess_alt(pname_);
-}
-
-/*
- * pname_: name of the process to search for
- * return: the pid found on success match and 0 on fail
-*/
-pid_t checkProcess_alt(const Cmd pname_)
+static pid_t checkProcess_alt(const Cmd pname_)
 {
     DIR* dir;
     struct dirent* ent;
@@ -129,6 +82,38 @@ pid_t checkProcess_alt(const Cmd pname_)
     return 0;
 }
 
+/*
+ * pname_: name of the process to search for
+ * return: the pid found on success match and 0 on fail
+*/
+static pid_t checkProcess(const Cmd pname_)
+{
+    const Filename pid_file = "/tmp/lwallpaper/lwallpaper.pid";
+
+    FILE* fp = fopen(pid_file, "r");
+
+    if (!fp) die("unable to open %s pid_file", pid_file);
+    else
+    {
+        pid_t pid;
+        char cmd[512];
+
+        while((fscanf(fp, "%d %s", &pid, cmd)) == 2)
+        {
+            if (!strncmp(pname_, cmd, sizeof cmd))
+            {
+                fclose(fp);
+                return pid;
+            }
+        }
+    }
+
+    fclose(fp);
+
+    // case search in pid_file doesn't return
+    return checkProcess_alt(pname_);
+}
+
 bool isXwinwrapRunning(void) { return checkProcess("xwinwrap"); }
 
 bool isWineserverRunning(void) { return checkProcess("wineserver"); }
@@ -158,7 +143,7 @@ void createLogFile(const Filepath config_path)
     }
 }
 
-void getLastLine(const Filepath config_log_file, char* buf)
+static void getLastLine(const Filepath config_log_file, char* buf)
 {
     char c;
     int len = 0;
@@ -188,6 +173,25 @@ void getLastLine(const Filepath config_log_file, char* buf)
     if (!fgets(buf, len, fp)) die("failed to get last line");
 
     fclose(fp);
+}
+
+bool checkFile(const Filepath path, const Filename file)
+{
+    char buf[4096];
+    char* log_file;
+
+    asprintf(&log_file, "%s/%s", path, file);
+
+    if (log_file)
+    {
+        getLastLine(log_file, buf);
+
+        free(log_file);
+
+        return (strstr(buf, "operation failed") || strstr(buf, "Error") || strstr(buf, "BadDrawable"));
+    }
+
+    return false;
 }
 
 void daemonize(void)
@@ -232,9 +236,64 @@ static pid_t spawnProcess(const Cmd cmd, char* const args[])
     return pid+1;
 }
 
-pid_t getPid(void)
+void writePid(const pid_t pid, const Cmd cmd)
 {
-    return getpid()+1;
+    FILE* fp;
+
+    const Filename pid_file = "/tmp/lwallpaper/lwallpaper.pid";
+
+    fp = fopen(pid_file, "a");
+
+    if (!fp) die("unable to open/create %s pid_file", pid_file);
+    else
+    {
+        pid_t t_pid;
+
+        while ((fscanf(fp, "%d", &t_pid) == 1))
+        {
+            if (t_pid == pid)
+            {
+                fclose(fp);
+                return;
+            }
+        }
+
+        fprintf(fp, "%d %s\n", pid, cmd);
+    }
+
+    fclose(fp);
+}
+
+static void removePid(const pid_t pid)
+{
+    FILE* fp;
+    FILE* tmp_fp;
+
+    const Filename pid_file = "/tmp/lwallpaper/lwallpaper.pid";
+    const Filename tmp_pid_file = "/tmp/lwallpaper/tmp~lwallpaper.pid";
+
+    fp = fopen(pid_file, "r");
+    tmp_fp = fopen(tmp_pid_file, "w");
+
+    if (!fp) die("unable to open %s pid_file", pid_file);
+    else
+    {
+        pid_t t_pid;
+        char cmd[256];
+
+        while((fscanf(fp, "%d %s\n", &t_pid, cmd) == 2))
+        {
+            if (t_pid != pid)
+            {
+                fprintf(tmp_fp, "%d %s\n", t_pid, cmd);
+            }
+        }
+
+        rename(tmp_pid_file, pid_file);
+    }
+
+    fclose(fp);
+    fclose(tmp_fp);
 }
 
 void initXWinwrap(Filepath config_path)
@@ -276,66 +335,6 @@ void pkill(const Cmd pname_, const Signal signum)
         removePid(pid);
         terminateProcess(pid, signum);
     }
-}
-
-void writePid(const pid_t pid, const Cmd cmd)
-{
-    FILE* fp;
-
-    const Filename pid_file = "/tmp/lwallpaper/lwallpaper.pid";
-
-    fp = fopen(pid_file, "a");
-
-    if (!fp) die("unable to open/create %s pid_file", pid_file);
-    else
-    {
-        pid_t t_pid;
-
-        while ((fscanf(fp, "%d", &t_pid) == 1))
-        {
-            if (t_pid == pid)
-            {
-                fclose(fp);
-                return;
-            }
-        }
-
-        fprintf(fp, "%d %s\n", pid, cmd);
-    }
-
-    fclose(fp);
-}
-
-void removePid(const pid_t pid)
-{
-    FILE* fp;
-    FILE* tmp_fp;
-
-    const Filename pid_file = "/tmp/lwallpaper/lwallpaper.pid";
-    const Filename tmp_pid_file = "/tmp/lwallpaper/tmp~lwallpaper.pid";
-
-    fp = fopen(pid_file, "r");
-    tmp_fp = fopen(tmp_pid_file, "w");
-
-    if (!fp) die("unable to open %s pid_file", pid_file);
-    else
-    {
-        pid_t t_pid;
-        char cmd[256];
-
-        while((fscanf(fp, "%d %s\n", &t_pid, cmd) == 2))
-        {
-            if (t_pid != pid)
-            {
-                fprintf(tmp_fp, "%d %s\n", t_pid, cmd);
-            }
-        }
-
-        rename(tmp_pid_file, pid_file);
-    }
-
-    fclose(fp);
-    fclose(tmp_fp);
 }
 
 void terminateAndExit(void)
