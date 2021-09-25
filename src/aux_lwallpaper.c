@@ -14,6 +14,7 @@ int main(int arg, char* const argv[])
     if (!strncmp(flag, "-d", 2))
     {
         terminateAndExit();
+
         die("something went wrong at stopping processes.");
     } else if (!strncmp(flag, "-s", 2))
     {

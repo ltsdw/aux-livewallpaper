@@ -351,13 +351,17 @@ void daemonize(void)
 static pid_t spawnProcess(const Cmd cmd, char* const args[])
 {
     pid_t pid = fork();
+    int status;
 
     if (pid < 0) die("something went wrong.");
-    else if (pid) waitpid(pid, NULL, WNOHANG);
-    else
+    else if (pid) 
     {
-        execv(cmd, args);
-        die("something went wrong.");
+        waitpid(pid, &status, WNOHANG);
+
+        if (!WIFEXITED(status)) die("failed at executing %s.", cmd);
+    } else
+    {
+        if (execv(cmd, args)) die("something went wrong with execv()");
     }
 
     return pid;
@@ -445,8 +449,7 @@ void initXWinwrap(Filepath config_path)
 
         pid_t pid = spawnProcess(xwinwrap_cmd[0], xwinwrap_cmd);
 
-        if (pid < 0) die("error at spawning xwinwrap.");
-        else writePid(pid, "xwinwrap");
+        writePid(pid, "xwinwrap");
 
         free(log_file_flag);
         free(media_file);
@@ -458,8 +461,7 @@ void initCompositor(void)
     Cmd compositor_name = getCompositorName();
     pid_t pid = spawnProcess(compositor_name, compositor);
 
-    if (pid < 0) die("error at spawning %s.", compositor_name);
-    else writePid(pid, compositor_name);
+    writePid(pid, compositor_name);
 }
 
 void pkill(const Cmd pname_, const Signal signum)
