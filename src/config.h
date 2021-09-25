@@ -1,7 +1,9 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-char media[] = "demon-mask-pixel-720p-18fps.mp4";
+// name of the file that should be used with xwinwrap
+// char media[] = "demon-mask-pixel-720p-18fps.mp4"
+char media[] = "";
 
 // compositor[0] = command
 // compositor[@] = args

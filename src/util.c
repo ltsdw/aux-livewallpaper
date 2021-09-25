@@ -52,6 +52,8 @@ static void makeLwallpaperDir(void)
 
 static bool mediaExist(void)
 {
+    if (!media[0]) die("media file is empty, check config.h.");
+
     Filename media_file;
 
     char* config_path;
