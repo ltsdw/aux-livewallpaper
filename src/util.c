@@ -92,7 +92,7 @@ Cmd getCompositorName(void)
 
 bool shouldCompose(void)
 {
-    return getCompositorName();
+    return getCompositorName()[0];
 }
 
 void setup(void)
@@ -102,7 +102,7 @@ void setup(void)
 
     if (!doesBinExists(cmd_mpv)) die("%s: not found", cmd_mpv);
 
-    if (compositor_name) if (!doesBinExists(compositor_name)) die("%s: not found", compositor_name);
+    if (shouldCompose()) if (!doesBinExists(compositor_name)) die("%s: not found", compositor_name);
 
     makeLwallpaperDir();
 
@@ -182,7 +182,7 @@ static pid_t checkProcess_alt(const Cmd pname_)
                     die("failed to parse pid and process name");
                 }
 
-                if (!strncmp(pname_, pname, sizeof *pname) && (state == 'R' || state == 'S'))
+                if (!strncmp(pname_, pname, strlen(pname)) && (state == 'R' || state == 'S'))
                 {
                     fclose(fp);
                     closedir(dir);

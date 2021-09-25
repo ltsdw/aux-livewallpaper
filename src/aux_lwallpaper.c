@@ -30,7 +30,8 @@ int main(int arg, char* const argv[])
 
             getConfigPath(&config_path);
 
-            if (config_path)
+            if (!config_path) die("couldn't get the configuration path.");
+            else
             {
                 const bool should_compose = shouldCompose();
 
