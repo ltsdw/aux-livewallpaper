@@ -4,7 +4,7 @@
 #define _GNU_SOURCE
 #define _POSIX_SOURCE
 
-#define VERSION "1.0.7"
+#define VERSION "1.0.8"
 
 #include <stdlib.h>
 #include <string.h>
@@ -32,15 +32,19 @@ typedef struct XWinwrap
     char* xwinwrap_cmd[30];
 } XWinwrap;
 
-void getConfigPath(const Filepath);
+void getConfigPath(char**);
 bool checkFile(const Filepath, const Filename);
 bool isXwinwrapRunning(void);
 bool isWineserverRunning(void);
+bool isCompositorRunning(void);
+bool checkForCompositor(void);
 void createLogFile(const Filepath);
 void daemonize(void);
 void setup(void);
-pid_t getPid(void);
+Cmd getCompositorName(void);
+bool shouldCompose(void);
 void initXWinwrap(const Filepath);
+void initCompositor(void);
 void writePid(const pid_t, const Cmd);
 void terminateAndExit(void);
 void pkill(const Cmd, const Signal);

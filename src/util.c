@@ -1,6 +1,7 @@
 #include "util.h"
 #include "config.h"
 
+
 static void makePidfileDir(void)
 {
     struct stat st;
@@ -53,32 +54,61 @@ static bool mediaExist(void)
 {
     Filename media_file;
 
-    char config_path[200];
-    getConfigPath(config_path);
+    char* config_path;
 
-    asprintf(&media_file, "%s/%s/%s", config_path, "medias", media);
+    getConfigPath(&config_path);
 
-    if (media_file)
+    if (config_path)
     {
-        return (access(media_file, F_OK) == 0);
-        free(media_file);
+        asprintf(&media_file, "%s/%s/%s", config_path, "medias", media);
+
+        free(config_path);
+
+        if (media_file)
+        {
+
+            bool res = access(media_file, F_OK);
+
+            free(media_file);
+
+            return (!res);
+        }
     }
 
     return false;
 }
 
+static bool doesBinExists(const Cmd cmd)
+{
+    return (!access(cmd, F_OK));
+}
+
+Cmd getCompositorName(void)
+{
+    if (compositor[0]) return compositor[0];
+
+    return "";
+}
+
+bool shouldCompose(void)
+{
+    return getCompositorName();
+}
+
 void setup(void)
 {
+    Cmd compositor_name = getCompositorName();
+    Cmd cmd_mpv = "/usr/bin/mpv";
+
+    if (!doesBinExists(cmd_mpv)) die("%s: not found", cmd_mpv);
+
+    if (compositor_name) if (!doesBinExists(compositor_name)) die("%s: not found", compositor_name);
+
     makeLwallpaperDir();
 
     makePidfileDir();
 
     if (!mediaExist()) die("media %s not found", media);
-}
-
-pid_t getPid(void)
-{
-    return getpid()+1;
 }
 
 static int terminateProcess(pid_t pid, Signal signum)
@@ -89,7 +119,10 @@ static int terminateProcess(pid_t pid, Signal signum)
     return 0;
 }
 
-void getConfigPath(char* buf)
+/*
+ * buf: dinamically allocated memory should be freed after use
+ */
+void getConfigPath(char** buf)
 {
     char* tmp;
 
@@ -100,7 +133,7 @@ void getConfigPath(char* buf)
 
     if (tmp)
     {
-        strncpy(buf, tmp, 200);
+        asprintf(buf, "%s", tmp);
 
         free(tmp);
     }
@@ -114,43 +147,53 @@ static pid_t checkProcess_alt(const Cmd pname_)
 {
     DIR* dir;
     struct dirent* ent;
-    char pname[512];
-    char buf[256];
-
-    FILE* fp;
 
     if (!(dir = opendir("/proc"))) die("unable to open /proc directory");
 
-    while((ent = readdir(dir)) != NULL)
+    while((ent = readdir(dir)))
     {
+        char* buf;
         long pid;
         char state;
 
         long lpid = atol(ent->d_name);
 
-        if (lpid <= 0) continue;
+        if (lpid <= 1000) continue;
 
-        snprintf(buf, sizeof buf, "/proc/%ld/stat", lpid);
+        asprintf(&buf, "/proc/%ld/stat", lpid);
 
-        fp = fopen(buf, "r");
-
-        if (fp)
+        if (buf)
         {
-            if ((fscanf(fp, "%ld (%[^)]) %c", &pid, pname, &state) != 3))
-            {
-                fclose(fp);
-                closedir(dir);
-                die("failed to parse pid and process name");
-            }
+            FILE* fp = fopen(buf, "r");
 
-            if (!strncmp(pname_, pname, sizeof pname) && (state == 'R' || state == 'S'))
+            free(buf);
+
+            if (fp)
             {
+                char* pname;
+
+                if ((fscanf(fp, "%ld (%m[^)]) %c", &pid, &pname, &state) != 3))
+                {
+                    fclose(fp);
+                    closedir(dir);
+
+                    if (pname) free(pname);
+
+                    die("failed to parse pid and process name");
+                }
+
+                if (!strncmp(pname_, pname, sizeof *pname) && (state == 'R' || state == 'S'))
+                {
+                    fclose(fp);
+                    closedir(dir);
+                    free(pname);
+
+                    return pid;
+                }
+
                 fclose(fp);
-                closedir(dir);
-                return pid;
             }
         }
-
     }
 
     return 0;
@@ -170,22 +213,22 @@ static pid_t checkProcess(const Cmd pname_)
     {
         return checkProcess_alt(pname_);
     }
-    else
+
+    pid_t pid;
+    char* cmd;
+
+    while((fscanf(fp, "%d %ms", &pid, &cmd)) == 2)
     {
-        pid_t pid;
-        char cmd[512];
-
-        while((fscanf(fp, "%d %s", &pid, cmd)) == 2)
+        if (cmd && (!strncmp(pname_, cmd, sizeof *cmd)))
         {
-            if (!strncmp(pname_, cmd, sizeof cmd))
-            {
-                fclose(fp);
-                return pid;
-            }
-        }
+            fclose(fp);
+            free(cmd);
 
-        fclose(fp);
+            return pid;
+        }
     }
+
+    fclose(fp);
 
     // case search in pid_file doesn't return
     return checkProcess_alt(pname_);
@@ -194,6 +237,8 @@ static pid_t checkProcess(const Cmd pname_)
 bool isXwinwrapRunning(void) { return checkProcess("xwinwrap"); }
 
 bool isWineserverRunning(void) { return checkProcess("wineserver"); }
+
+bool isCompositorRunning(void) { return checkProcess(getCompositorName()); }
 
 static bool isAuxLwallpaperRunning(void) { return checkProcess("aux_lwallpaper"); }
 
@@ -220,6 +265,9 @@ void createLogFile(const Filepath config_path)
     }
 }
 
+/*
+ * buf: memory allocated dinamically, needs to be free after use
+ */
 static void getLastLine(const Filepath config_log_file, char* buf)
 {
     char c;
@@ -249,7 +297,7 @@ static void getLastLine(const Filepath config_log_file, char* buf)
 
     if (!fgets(buf, len, fp)) die("failed to get last line");
 
-    if (fp) fclose(fp);
+    fclose(fp);
 }
 
 bool checkFile(const Filepath path, const Filename file)
@@ -310,7 +358,7 @@ static pid_t spawnProcess(const Cmd cmd, char* const args[])
         die("something went wrong.");
     }
 
-    return pid+1;
+    return pid;
 }
 
 void writePid(const pid_t pid, const Cmd cmd)
@@ -356,11 +404,15 @@ static void removePid(const pid_t pid)
     if (fp)
     {
         pid_t t_pid;
-        char cmd[256];
+        char* cmd;
 
-        while((fscanf(fp, "%d %s\n", &t_pid, cmd) == 2))
+        while((fscanf(fp, "%d %ms", &t_pid, &cmd) == 2))
         {
-            if (t_pid != pid) fprintf(tmp_fp, "%d %s\n", t_pid, cmd);
+            if (cmd)
+            {
+                if (t_pid != pid) fprintf(tmp_fp, "%d %s\n", t_pid, cmd);
+                free(cmd);
+            }
         }
 
         rename(tmp_pid_file, pid_file);
@@ -380,7 +432,7 @@ void initXWinwrap(Filepath config_path)
     if (log_file_flag && media_file)
     {
         char* xwinwrap_cmd[] = {"/usr/bin/xwinwrap", "-g", "1366x768", "-ni", "-s",
-                                "-nf", "-b", "-un", "-ov", "-fdt", "-argb", "-d",
+                                "-nf", "-b", "-un", "-ov", "-fdt", "-argb",
                                 "--",
                                 "/usr/bin/mpv", "--msg-level=ffmpeg=fatal,vo=fatal", log_file_flag,
                                 "--audio=no", "--osc=no", "--cursor-autohide=no", "--no-input-cursor",
@@ -397,6 +449,15 @@ void initXWinwrap(Filepath config_path)
         free(log_file_flag);
         free(media_file);
     }
+}
+
+void initCompositor(void)
+{
+    Cmd compositor_name = getCompositorName();
+    pid_t pid = spawnProcess(compositor_name, compositor);
+
+    if (pid < 0) die("error at spawning %s.", compositor_name);
+    else writePid(pid, compositor_name);
 }
 
 void pkill(const Cmd pname_, const Signal signum)
@@ -416,52 +477,9 @@ void terminateAndExit(void)
 
     if (isAuxLwallpaperRunning()) pkill("aux_lwallpaper", SIGTERM);
 
+    if (shouldCompose() && isCompositorRunning()) pkill(getCompositorName(), SIGTERM);
+
     exit(EXIT_SUCCESS);
-}
-
-static void removeExeFromAbsPath(const Filepath path, char* buf)
-{
-    char* token = strtok(path, "/");
-    char* tmp[200];
-    size_t bnd = sizeof(tmp) - 1;
-    int c = 0;
-
-    while (token != NULL)
-    {
-        tmp[c] = token;
-        token = strtok(NULL, "/");
-        c++;
-    }
-
-    strncat(buf, "/", bnd);
-
-    for (int i = 0; i <= c-2; i++)
-    {
-        strncat(buf, tmp[i], bnd);
-        strncat(buf, "/", bnd);
-    }
-}
-
-__attribute__((unused)) static void absBinPath(char* buf, char* buf_, const char* argv0)
-{
-    char tmp[200];
-    size_t bnd = sizeof(tmp) - 1;
-
-    if (argv0[0] == '/')
-        strncpy(buf, argv0, bnd);
-    else
-    {
-        if (!getcwd(tmp, bnd))
-            die("getcdw error.");
-
-        strncat(tmp, "/", bnd);
-        strncat(tmp, argv0, bnd);
-    }
-
-    if (!realpath(tmp, buf))
-        die("realpath error.");
-
-    removeExeFromAbsPath(tmp, buf_);
 }
 
 void die(const char* fmt, ...)

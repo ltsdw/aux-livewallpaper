@@ -1,12 +1,11 @@
 #include "util.h"
 
 
-int main(int arg, const char* const argv[])
+int main(int arg, char* const argv[])
 {
-    char flag[10];
+    char* flag = argv[1];
 
-    if (argv[1]) strncpy(flag, argv[1], 9);
-    else help();
+    if (!argv[1]) help();
 
     if (!strncmp(flag, "-h", 2) || !strncmp(flag, "--help", 6)) help();
 
@@ -22,32 +21,54 @@ int main(int arg, const char* const argv[])
         {
             setup();
 
-            writePid(getPid(), "aux_lwallpaper");
-
             daemonize();
 
-            char config_path[200];
-            getConfigPath(config_path);
+            writePid(getpid(), "aux_lwallpaper");
 
-            while (true)
+            // unecessary deallocate, it will be used until the program ends
+            char* config_path;
+
+            getConfigPath(&config_path);
+
+            if (config_path)
             {
-                if (checkFile(config_path, "mpv.log"))
+                const bool should_compose = shouldCompose();
+
+                const Cmd compositor_name = getCompositorName();
+
+                while (true)
                 {
-                    pkill("xwinwrap", SIGKILL);
+                    if (checkFile(config_path, "mpv.log"))
+                    {
+                        pkill("xwinwrap", SIGKILL);
 
-                    sleep(1);
+                        sleep(1);
 
-                    initXWinwrap(config_path);
+                        initXWinwrap(config_path);
+                    }
+
+                    if (!isXwinwrapRunning() && !isWineserverRunning())
+                    {
+                        if (should_compose) initCompositor();
+
+                        initXWinwrap(config_path);
+                    }
+
+                    if (isWineserverRunning() && isXwinwrapRunning())
+                    {
+                        pkill("xwinwrap", SIGKILL);
+
+                        if (should_compose && isCompositorRunning()) pkill(compositor_name, SIGKILL);
+                    }
+
+                    sleep(5);
                 }
 
-                if (!isXwinwrapRunning() && !isWineserverRunning()) initXWinwrap(config_path);
-
-                if (isWineserverRunning() && isXwinwrapRunning()) pkill("xwinwrap", SIGKILL);
-
-                sleep(20);
+                // but here just to play safe
+                free(config_path);
             }
         } else die("aux_lwallpaper already running.");
     } else help();
 
-    return EXIT_SUCCESS;
+    return 0;
 }
