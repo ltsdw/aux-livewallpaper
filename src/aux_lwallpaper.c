@@ -40,12 +40,9 @@ int main(int arg, char* const argv[])
             {
                 while (true)
                 {
-                    if (!isXwinwrapRunning() && !isWineserverRunning())
-                    {
-                        if (should_compose && !isCompositorRunning()) initCompositor();
+                    if (!isCompositorRunning() && !isWineserverRunning()) initCompositor();
 
-                        initXWinwrap(config_path);
-                    }
+                    if (!isXwinwrapRunning() && !isWineserverRunning()) initXWinwrap(config_path);
 
                     // need sleep here, otherwise a race condition will happen
                     // and checkFile will not be able to open mpv.log

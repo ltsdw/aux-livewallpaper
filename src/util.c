@@ -453,7 +453,7 @@ void initXWinwrap(Filepath config_path)
     if (log_file_flag && media_file)
     {
         char* xwinwrap_cmd[] = {"/usr/bin/xwinwrap", "-g", "1366x768", "-ni", "-s",
-                                "-nf", "-b", "-un", "-ov", "-fdt", "-argb", "-d",
+                                "-nf", "-b", "-un", "-ov", "-fdt", "-argb",
                                 "--",
                                 "/usr/bin/mpv", "--msg-level=ffmpeg=fatal,vo=fatal", log_file_flag,
                                 "--audio=no", "--osc=no", "--cursor-autohide=no", "--no-input-cursor",
@@ -462,7 +462,7 @@ void initXWinwrap(Filepath config_path)
 
         createLogFile(config_path);
 
-        pid_t pid = spawnProcess(xwinwrap_cmd[0], xwinwrap_cmd, true);
+        pid_t pid = spawnProcess(xwinwrap_cmd[0], xwinwrap_cmd, false);
 
         writePid(pid, "xwinwrap");
 
