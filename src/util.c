@@ -221,7 +221,7 @@ static pid_t checkProcess(const Cmd pname_)
 
     while((fscanf(fp, "%d %ms", &pid, &cmd)) == 2)
     {
-        if (cmd && (!strncmp(pname_, cmd, sizeof *cmd)))
+        if (cmd && (!strncmp(pname_, cmd, strlen(cmd))))
         {
             fclose(fp);
             free(cmd);
@@ -233,6 +233,8 @@ static pid_t checkProcess(const Cmd pname_)
     fclose(fp);
 
     // case search in pid_file doesn't return
+    if (!strncmp(pname_, "aux_lwallpaper", strlen("aux_lwallpaper"))) return false;
+
     return checkProcess_alt(pname_);
 }
 
@@ -242,7 +244,7 @@ bool isWineserverRunning(void) { return checkProcess("wineserver"); }
 
 bool isCompositorRunning(void) { return checkProcess(getCompositorName()); }
 
-static bool isAuxLwallpaperRunning(void) { return checkProcess("aux_lwallpaper"); }
+bool isAuxLwallpaperRunning(void) { return checkProcess("aux_lwallpaper"); }
 
 void createLogFile(const Filepath config_path)
 {
@@ -281,6 +283,9 @@ static void getLastLine(const Filepath config_log_file, char* buf)
 
     fseek(fp, -1, SEEK_END);
     c = fgetc(fp);
+
+    // file is empty
+    if (c == EOF) return;
 
     while (c == '\n')
     {
@@ -326,16 +331,14 @@ void daemonize(void)
     /* fork off the parent process */
     pid_t pid = fork();
 
-    if (pid < 0)
-        die("error at forking parent process.");
+    if (pid < 0) die("error at forking parent process.");
     /* on success let the parent terminate */
-    else if (pid)
-        exit(EXIT_SUCCESS);
+    else if (pid) exit(EXIT_SUCCESS);
     else
     {
+        umask(0);
         /* on success the child process becomes session leader */
-        if (setsid() < 0)
-            die("failed to set child process.");
+        if (setsid() < 0) die("failed to set child process.");
 
         /* changing dir to root directory */
         chdir("/");
@@ -348,21 +351,33 @@ void daemonize(void)
     }
 }
 
-static pid_t spawnProcess(const Cmd cmd, char* const args[])
+/* cmd: command to be spawned
+ * args: arguments to command
+ * should_daemonize: if true it will add 1 to the pid
+ */
+static pid_t spawnProcess(const Cmd cmd, char* const args[], const bool should_daemonize)
 {
-    pid_t pid = fork();
     int status;
+
+    pid_t pid = fork();
 
     if (pid < 0) die("something went wrong.");
     else if (pid) 
     {
         waitpid(pid, &status, WNOHANG);
 
-        if (!WIFEXITED(status)) die("failed at executing %s.", cmd);
-    } else
-    {
-        if (execv(cmd, args)) die("something went wrong with execv()");
-    }
+        /*TODO
+         * compositor picom doesn't go well while it goes daemonize and this daemon closes
+         * any file descriptors.
+         *
+         * while picom isn't in daemon mode it's not possible to wait for the
+         * status exit, so it's also not possible to catch any error.
+         *
+         * WIFEXITED(status) - WEXITSTATUS(status)
+         */
+    } else if (execv(cmd, args)) die("something went wrong with execv()");
+
+    if (should_daemonize) ++pid;
 
     return pid;
 }
@@ -438,7 +453,7 @@ void initXWinwrap(Filepath config_path)
     if (log_file_flag && media_file)
     {
         char* xwinwrap_cmd[] = {"/usr/bin/xwinwrap", "-g", "1366x768", "-ni", "-s",
-                                "-nf", "-b", "-un", "-ov", "-fdt", "-argb",
+                                "-nf", "-b", "-un", "-ov", "-fdt", "-argb", "-d",
                                 "--",
                                 "/usr/bin/mpv", "--msg-level=ffmpeg=fatal,vo=fatal", log_file_flag,
                                 "--audio=no", "--osc=no", "--cursor-autohide=no", "--no-input-cursor",
@@ -447,7 +462,7 @@ void initXWinwrap(Filepath config_path)
 
         createLogFile(config_path);
 
-        pid_t pid = spawnProcess(xwinwrap_cmd[0], xwinwrap_cmd);
+        pid_t pid = spawnProcess(xwinwrap_cmd[0], xwinwrap_cmd, true);
 
         writePid(pid, "xwinwrap");
 
@@ -459,7 +474,8 @@ void initXWinwrap(Filepath config_path)
 void initCompositor(void)
 {
     Cmd compositor_name = getCompositorName();
-    pid_t pid = spawnProcess(compositor_name, compositor);
+
+    pid_t pid = spawnProcess(compositor_name, compositor, false);
 
     writePid(pid, compositor_name);
 }

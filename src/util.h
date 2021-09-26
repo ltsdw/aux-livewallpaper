@@ -34,6 +34,7 @@ typedef struct XWinwrap
 
 void getConfigPath(char**);
 bool checkFile(const Filepath, const Filename);
+bool isAuxLwallpaperRunning(void);
 bool isXwinwrapRunning(void);
 bool isWineserverRunning(void);
 bool isCompositorRunning(void);
