@@ -6,9 +6,13 @@ static void makePidfileDir(void)
 {
     struct stat st;
 
-    if (stat("/tmp/lwallpaper", &st) == -1)
+    if (stat("/tmp/lwallpaper", &st))
     {
         mkdir("/tmp/lwallpaper", 0700);
+
+        FILE* fp = fopen("/tmp/lwallpaper/lwallpaper.pid", "w");
+
+        if (fp) fclose(fp);
     }
 }
 
@@ -99,16 +103,18 @@ bool shouldCompose(void)
 
 void setup(void)
 {
+    makeLwallpaperDir();
+    makePidfileDir();
+}
+
+void doChecks(void)
+{
     Cmd compositor_name = getCompositorName();
     Cmd cmd_mpv = "/usr/bin/mpv";
 
     if (!doesBinExists(cmd_mpv)) die("%s: not found", cmd_mpv);
 
     if (shouldCompose()) if (!doesBinExists(compositor_name)) die("%s: not found", compositor_name);
-
-    makeLwallpaperDir();
-
-    makePidfileDir();
 
     if (!mediaExist()) die("media %s not found", media);
 }
@@ -211,10 +217,7 @@ static pid_t checkProcess(const Cmd pname_)
 
     FILE* fp = fopen(pid_file, "r");
 
-    if (!fp)
-    {
-        return checkProcess_alt(pname_);
-    }
+    if (!fp) return checkProcess_alt(pname_);
 
     pid_t pid;
     char* cmd;
@@ -232,9 +235,10 @@ static pid_t checkProcess(const Cmd pname_)
 
     fclose(fp);
 
-    // case search in pid_file doesn't return
+    // case lwallpaper.pid is empty and we're looking for the daemon itself, it isn't running
     if (!strncmp(pname_, "aux_lwallpaper", strlen("aux_lwallpaper"))) return false;
 
+    // case search in pid_file doesn't return
     return checkProcess_alt(pname_);
 }
 
@@ -256,15 +260,21 @@ void createLogFile(const Filepath config_path)
 
     if (old && new)
     {
-        FILE* fp = fopen(new, "w");
+        FILE* fp = fopen(new, "r");
 
         if (fp)
         {
-            rename(new, old);
             fclose(fp);
+
+            rename(new, old);
+
+            free(old);
         }
 
-        free(old);
+        fp = fopen(new, "w");
+
+        if (fp) fclose(fp);
+
         free(new);
     }
 }

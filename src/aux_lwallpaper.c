@@ -18,9 +18,12 @@ int main(int arg, char* const argv[])
         die("something went wrong at stopping processes.");
     } else if (!strncmp(flag, "-s", 2))
     {
+        // create necessary directories if they don't exist
+        setup();
+
         if (!isAuxLwallpaperRunning())
         {
-            setup();
+            doChecks();
 
             const bool should_compose = shouldCompose();
 
@@ -40,13 +43,9 @@ int main(int arg, char* const argv[])
             {
                 while (true)
                 {
-                    if (!isCompositorRunning() && !isWineserverRunning()) initCompositor();
+                    if (should_compose && !isCompositorRunning() && !isWineserverRunning()) initCompositor();
 
                     if (!isXwinwrapRunning() && !isWineserverRunning()) initXWinwrap(config_path);
-
-                    // need sleep here, otherwise a race condition will happen
-                    // and checkFile will not be able to open mpv.log
-                    sleep(1);
 
                     if (checkFile(config_path, "mpv.log"))
                     {

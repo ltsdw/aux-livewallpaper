@@ -4,7 +4,7 @@
 #define _GNU_SOURCE
 #define _POSIX_SOURCE
 
-#define VERSION "1.0.8"
+#define VERSION "1.0.9"
 
 #include <stdlib.h>
 #include <string.h>
@@ -42,6 +42,7 @@ bool checkForCompositor(void);
 void createLogFile(const Filepath);
 void daemonize(void);
 void setup(void);
+void doChecks(void);
 Cmd getCompositorName(void);
 bool shouldCompose(void);
 void initXWinwrap(const Filepath);
