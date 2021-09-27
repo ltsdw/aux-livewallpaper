@@ -19,39 +19,38 @@ static void makePidfileDir(void)
 static void makeLwallpaperDir(void)
 {
     Filepath xdg_config_home = getenv("XDG_CONFIG_HOME");
-    Filepath config_path = {0};
+    Filepath config_path;
 
     if (!xdg_config_home)
     {
         const Filepath user = getenv("USER");
-        if (user)
-        {
-            asprintf(&config_path, "/%s/%s/%s/", "home", user, ".config");
 
-            free(user);
-        } else die("getenv(\"USER\") failed");
+        if (!user) die("getenv(\"USER\") failed");
+
+        asprintf(&config_path, "/%s/%s/%s/", "home", user, ".config");
+
+        free(user);
     } else asprintf(&config_path, "%s/%s", xdg_config_home, "live_wallpaper");
 
-    if (config_path)
+    if (!config_path) die("unable to create configuration directory");
+
+    struct stat st;
+
+    if (stat(config_path, &st))
     {
-        struct stat st;
-        if (stat(config_path, &st) == -1)
-        {
-            Filepath medias_path;
+        Filepath medias_path;
 
-            mkdir(config_path, 0700);
+        mkdir(config_path, 0700);
 
-            asprintf(&medias_path, "%s/%s", config_path, "medias");
+        asprintf(&medias_path, "%s/%s", config_path, "medias");
 
-            if (medias_path)
-            {
-                mkdir(medias_path, 0700);
+        if (!medias_path) die("failed to create lwallpaper/medias directory");
 
-                free(medias_path);
-                free(config_path);
-            } else die("failed to create lwallpaper/medias directory");
-        }
-    } else die("unable to create configuration directory");
+        mkdir(medias_path, 0700);
+
+        free(medias_path);
+        free(config_path);
+    }
 }
 
 static bool mediaExist(void)
@@ -116,7 +115,7 @@ void doChecks(void)
 
     if (shouldCompose()) if (!doesBinExists(compositor_name)) die("%s: not found", compositor_name);
 
-    if (!mediaExist()) die("media %s not found", media);
+    if (!mediaExist()) die("file: %s not found at live_wallpaper/media directory", media);
 }
 
 static int terminateProcess(pid_t pid, Signal signum)
@@ -132,11 +131,11 @@ static int terminateProcess(pid_t pid, Signal signum)
  */
 void getConfigPath(char** buf)
 {
-    char* tmp;
-
     const Filepath path = "/.config/live_wallpaper";
+ 
     Filepath home = getenv("HOME");
 
+    char* tmp;
     asprintf(&tmp, "%s%s", home, path);
 
     if (tmp)
@@ -203,23 +202,23 @@ static pid_t checkProcess_alt(const Cmd pname)
 }
 
 /*
- * pname_: name of the process to search for
+ * pname: name of the process to search for
  * return: the pid found on success match and 0 on fail
 */
-static pid_t checkProcess(const Cmd pname_)
+static pid_t checkProcess(const Cmd pname)
 {
     const Filename pid_file = "/tmp/lwallpaper/lwallpaper.pid";
 
     FILE* fp = fopen(pid_file, "r");
 
-    if (!fp) return checkProcess_alt(pname_);
+    if (!fp) return checkProcess_alt(pname);
 
     pid_t pid;
     char* cmd;
 
     while((fscanf(fp, "%d %ms", &pid, &cmd)) == 2)
     {
-        if (cmd && (!strncmp(pname_, cmd, strlen(cmd))))
+        if (cmd && (!strncmp(pname, cmd, strlen(cmd))))
         {
             fclose(fp);
             free(cmd);
@@ -231,10 +230,10 @@ static pid_t checkProcess(const Cmd pname_)
     fclose(fp);
 
     // case lwallpaper.pid is empty and we're looking for the daemon itself, it isn't running
-    if (!strncmp(pname_, "aux_lwallpaper", strlen("aux_lwallpaper"))) return false;
+    if (!strncmp(pname, "aux_lwallpaper", strlen("aux_lwallpaper"))) return false;
 
     // case search in pid_file doesn't return
-    return checkProcess_alt(pname_);
+    return checkProcess_alt(pname);
 }
 
 bool isXwinwrapRunning(void) { return checkProcess("xwinwrap"); }
@@ -290,7 +289,12 @@ static void getLastLine(const Filepath config_log_file, char* buf)
     c = fgetc(fp);
 
     // file is empty
-    if (c == EOF) return;
+    if (c == EOF) 
+    {
+        fclose(fp);
+
+        return;
+    }
 
     while (c == '\n')
     {
@@ -406,6 +410,7 @@ void writePid(const pid_t pid, const Cmd cmd)
             if (t_pid == pid)
             {
                 fclose(fp);
+
                 return;
             }
         }
@@ -432,13 +437,14 @@ static void removePid(const pid_t pid)
     if (fp)
     {
         pid_t t_pid;
-        char* cmd;
+        Cmd cmd;
 
         while((fscanf(fp, "%d %ms", &t_pid, &cmd) == 2))
         {
             if (cmd)
             {
                 if (t_pid != pid) fprintf(tmp_fp, "%d %s\n", t_pid, cmd);
+
                 free(cmd);
             }
         }
@@ -487,9 +493,9 @@ void initCompositor(void)
     writePid(pid, compositor_name);
 }
 
-void pkill(const Cmd pname_, const Signal signum)
+void pkill(const Cmd pname, const Signal signum)
 {
-    pid_t pid = checkProcess(pname_);
+    pid_t pid = checkProcess(pname);
 
     if (pid)
     {
@@ -502,9 +508,9 @@ void terminateAndExit(void)
 {
     if (isXwinwrapRunning()) pkill("xwinwrap", SIGKILL);
 
-    if (isAuxLwallpaperRunning()) pkill("aux_lwallpaper", SIGTERM);
-
     if (shouldCompose() && isCompositorRunning()) pkill(getCompositorName(), SIGTERM);
+
+    if (isAuxLwallpaperRunning()) pkill("aux_lwallpaper", SIGTERM);
 
     exit(EXIT_SUCCESS);
 }

@@ -33,7 +33,6 @@ int main(int arg, char* const argv[])
 
             const Cmd compositor_name = getCompositorName();
 
-            // unecessary deallocate, it will be used until the program ends
             char* config_path;
 
             getConfigPath(&config_path);
@@ -41,7 +40,7 @@ int main(int arg, char* const argv[])
             if (!config_path) die("couldn't get the configuration path.");
             else
             {
-                while (true)
+                while (isAuxLwallpaperRunning())
                 {
                     if (should_compose && !isCompositorRunning() && !isWineserverRunning()) initCompositor();
 
@@ -66,7 +65,6 @@ int main(int arg, char* const argv[])
                     sleep(5);
                 }
 
-                // but here just to play safe
                 free(config_path);
             }
         } else die("aux_lwallpaper already running.");
