@@ -147,62 +147,57 @@ void getConfigPath(char** buf)
     }
 }
 
-/*
- * pname_: name of the process to search for
- * return: the pid found on success match and 0 on fail
-*/
-static pid_t checkProcess_alt(const Cmd pname_)
+static pid_t checkProcess_alt(const Cmd pname)
 {
     DIR* dir;
     struct dirent* ent;
 
-    if (!(dir = opendir("/proc"))) die("unable to open /proc directory");
-
-    while((ent = readdir(dir)))
+    if ((dir = opendir("/proc"))) 
     {
-        char* buf;
-        long pid;
-        char state;
-
-        long lpid = atol(ent->d_name);
-
-        if (lpid <= 1000) continue;
-
-        asprintf(&buf, "/proc/%ld/stat", lpid);
-
-        if (buf)
+        while((ent = readdir(dir)))
         {
-            FILE* fp = fopen(buf, "r");
+            char* buf;
+            int pid;
+            char state;
+
+            int lpid = atol(ent->d_name);
+
+            if (lpid <= 100) continue;
+
+            asprintf(&buf, "/proc/%d/stat", lpid);
+
+            FILE* fp = NULL;
+
+            if (buf) fp = fopen(buf, "r");
 
             free(buf);
 
             if (fp)
             {
-                char* pname;
+                char* mask;
 
-                if ((fscanf(fp, "%ld (%m[^)]) %c", &pid, &pname, &state) != 3))
+                asprintf(&mask, "%%s (%s) %%c", pname);
+
+                if (mask)
                 {
-                    fclose(fp);
-                    closedir(dir);
+                    if ((fscanf(fp, mask, &pid, &state) == 2))
+                    {
+                        fclose(fp);
+                        closedir(dir);
+                        free(mask);
 
-                    if (pname) free(pname);
+                        return pid;
+                    }
 
-                    die("failed to parse pid and process name");
-                }
-
-                if (!strncmp(pname_, pname, strlen(pname)) && (state == 'R' || state == 'S'))
-                {
-                    fclose(fp);
-                    closedir(dir);
-                    free(pname);
-
-                    return pid;
+                    free(mask);
                 }
 
                 fclose(fp);
             }
         }
-    }
+
+        closedir(dir);
+    } else die("unable to open /proc directory");
 
     return 0;
 }
@@ -369,6 +364,8 @@ static pid_t spawnProcess(const Cmd cmd, char* const args[], const bool should_d
 {
     int status;
 
+    signal(SIGCHLD, SIG_IGN);
+
     pid_t pid = fork();
 
     if (pid < 0) die("something went wrong.");
@@ -463,7 +460,7 @@ void initXWinwrap(Filepath config_path)
     if (log_file_flag && media_file)
     {
         char* xwinwrap_cmd[] = {"/usr/bin/xwinwrap", "-g", "1366x768", "-ni", "-s",
-                                "-nf", "-b", "-un", "-ov", "-fdt", "-argb",
+                                "-nf", "-b", "-un", "-ov", "-fdt", "-argb", "-d",
                                 "--",
                                 "/usr/bin/mpv", "--msg-level=ffmpeg=fatal,vo=fatal", log_file_flag,
                                 "--audio=no", "--osc=no", "--cursor-autohide=no", "--no-input-cursor",
@@ -472,7 +469,7 @@ void initXWinwrap(Filepath config_path)
 
         createLogFile(config_path);
 
-        pid_t pid = spawnProcess(xwinwrap_cmd[0], xwinwrap_cmd, false);
+        pid_t pid = spawnProcess(xwinwrap_cmd[0], xwinwrap_cmd, true);
 
         writePid(pid, "xwinwrap");
 

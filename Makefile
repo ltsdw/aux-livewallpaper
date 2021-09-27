@@ -15,7 +15,7 @@ build:
 	$(CC) $(CFLAGS) $(SRC) -o $(BUILDDIR)/$(TARGET)
 
 install:
-	install -Dm755 $(BUILDDIR)/$(TARGET) $(INSTALLDIR)
+	install -Dm750 $(BUILDDIR)/$(TARGET) $(INSTALLDIR)
 
 clean:
 	rm -rf $(BUILDDIR)
