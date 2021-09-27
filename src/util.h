@@ -1,10 +1,10 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+
 #define _GNU_SOURCE
 #define _POSIX_SOURCE
 
-#define VERSION "1.0.9"
 
 #include <stdlib.h>
 #include <string.h>
@@ -17,6 +17,11 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
+
+
+#define VERSION "1.1.0"
+
+#define MAX_APPS 100
 
 typedef char* Filepath;
 typedef char* Filename;
@@ -36,7 +41,7 @@ void getConfigPath(char**);
 bool checkFile(const Filepath, const Filename);
 bool isAuxLwallpaperRunning(void);
 bool isXwinwrapRunning(void);
-bool isWineserverRunning(void);
+bool isAnyRunning(void);
 bool isCompositorRunning(void);
 bool checkForCompositor(void);
 void createLogFile(const Filepath);

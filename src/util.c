@@ -238,11 +238,30 @@ static pid_t checkProcess(const Cmd pname)
 
 bool isXwinwrapRunning(void) { return checkProcess("xwinwrap"); }
 
-bool isWineserverRunning(void) { return checkProcess("wineserver"); }
-
 bool isCompositorRunning(void) { return checkProcess(getCompositorName()); }
 
 bool isAuxLwallpaperRunning(void) { return checkProcess("aux_lwallpaper"); }
+
+/**
+ * checks if any of the apps listed at disable_with array is running
+ *
+ */
+
+bool isAnyRunning(void) 
+{
+    int i = 0;
+
+    while (i < MAX_APPS)
+    {
+        if (!disable_with[i]) return false;
+
+        if (checkProcess(disable_with[i])) return true;
+
+        ++i;
+    }
+
+    return false;
+}
 
 void createLogFile(const Filepath config_path)
 {
@@ -466,7 +485,7 @@ void initXWinwrap(Filepath config_path)
     if (log_file_flag && media_file)
     {
         char* xwinwrap_cmd[] = {"/usr/bin/xwinwrap", "-g", "1366x768", "-ni", "-s",
-                                "-nf", "-b", "-un", "-ov", "-fdt", "-argb", "-d",
+                                "-nf", "-b", "-un", "-ov", "-fdt", "-argb",
                                 "--",
                                 "/usr/bin/mpv", "--msg-level=ffmpeg=fatal,vo=fatal", log_file_flag,
                                 "--audio=no", "--osc=no", "--cursor-autohide=no", "--no-input-cursor",
@@ -475,7 +494,7 @@ void initXWinwrap(Filepath config_path)
 
         createLogFile(config_path);
 
-        pid_t pid = spawnProcess(xwinwrap_cmd[0], xwinwrap_cmd, true);
+        pid_t pid = spawnProcess(xwinwrap_cmd[0], xwinwrap_cmd, false);
 
         writePid(pid, "xwinwrap");
 

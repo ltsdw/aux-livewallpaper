@@ -42,9 +42,17 @@ int main(int arg, char* const argv[])
             {
                 while (isAuxLwallpaperRunning())
                 {
-                    if (should_compose && !isCompositorRunning() && !isWineserverRunning()) initCompositor();
+                    const bool is_any_running = isAnyRunning();
+                    const bool is_xwinwrap_running = isXwinwrapRunning();
+                    const bool is_compositor_running = isCompositorRunning();
 
-                    if (!isXwinwrapRunning() && !isWineserverRunning()) initXWinwrap(config_path);
+                    if (!is_xwinwrap_running && !is_any_running) initXWinwrap(config_path);
+
+                    // it's needed to sleep here
+                    // otherwise xwinwrap would get the pid of compositor
+                    // sleep(1);
+
+                    if (should_compose && !is_compositor_running && !is_any_running) initCompositor();
 
                     if (checkFile(config_path, "mpv.log"))
                     {
@@ -55,11 +63,11 @@ int main(int arg, char* const argv[])
                         initXWinwrap(config_path);
                     }
 
-                    if (isWineserverRunning() && isXwinwrapRunning())
+                    if (is_any_running && is_xwinwrap_running)
                     {
                         pkill("xwinwrap", SIGKILL);
 
-                        if (should_compose && isCompositorRunning()) pkill(compositor_name, SIGKILL);
+                        if (should_compose && is_compositor_running) pkill(compositor_name, SIGKILL);
                     }
 
                     sleep(5);
