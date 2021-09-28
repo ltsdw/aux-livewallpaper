@@ -48,10 +48,6 @@ int main(int arg, char* const argv[])
 
                     if (!is_xwinwrap_running && !is_any_running) initXWinwrap(config_path);
 
-                    // it's needed to sleep here
-                    // otherwise xwinwrap would get the pid of compositor
-                    // sleep(1);
-
                     if (should_compose && !is_compositor_running && !is_any_running) initCompositor();
 
                     if (checkFile(config_path, "mpv.log"))

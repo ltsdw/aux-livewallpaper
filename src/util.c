@@ -246,7 +246,6 @@ bool isAuxLwallpaperRunning(void) { return checkProcess("aux_lwallpaper"); }
  * checks if any of the apps listed at disable_with array is running
  *
  */
-
 bool isAnyRunning(void) 
 {
     int i = 0;
