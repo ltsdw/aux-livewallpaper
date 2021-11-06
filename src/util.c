@@ -483,13 +483,14 @@ void initXWinwrap(Filepath config_path)
 
     if (log_file_flag && media_file)
     {
-        char* xwinwrap_cmd[] = {"/usr/bin/xwinwrap", "-g", "1366x768", "-ni", "-s",
-                                "-nf", "-b", "-un", "-ov", "-fdt", "-argb",
-                                "--",
-                                "/usr/bin/mpv", "--msg-level=ffmpeg=fatal,vo=fatal", log_file_flag,
-                                "--audio=no", "--osc=no", "--cursor-autohide=no", "--no-input-cursor",
-                                "--input-vo-keyboard=no", "--osd-level=0", "--hwdec=vaapi-copy",
-                                "--vo=vaapi", "-wid", "WID", "--loop-file=yes", media_file, NULL};
+        char* xwinwrap_cmd[] = {
+            "/usr/bin/xwinwrap", "-fs", "-fdt",
+            "--",
+            "/usr/bin/mpv", "--msg-level=ffmpeg=fatal,vo=fatal", log_file_flag,
+            "--audio=no", "--osc=no", "--cursor-autohide=no", "--no-input-cursor",
+            "--input-vo-keyboard=no", "--osd-level=0", "--hwdec=vaapi-copy",
+            "--vo=vaapi", "-wid", "WID", "--loop-file=yes", media_file, NULL
+        };
 
         createLogFile(config_path);
 
@@ -553,9 +554,11 @@ void die(const char* fmt, ...)
 
 void help(void)
 {
-    die("version: %s\n"
+    die(
+        "version: %s\n"
         "    -h --help          for help.\n"
         "    -s                 to start the thing.\n"
         "    -d                 to stop the thing.\n"
-        "    -v --version       for versioning.", VERSION);
+        "    -v --version       for versioning.", VERSION
+    );
 }
