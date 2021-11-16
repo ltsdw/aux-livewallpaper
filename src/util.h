@@ -18,7 +18,7 @@
 #include <sys/stat.h>
 
 
-#define VERSION "1.1.1"
+#define VERSION "1.1.2"
 
 #define MAX_APPS 100
 
