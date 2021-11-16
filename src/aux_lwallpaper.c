@@ -46,15 +46,13 @@ int main(int arg, char* const argv[])
                     const bool is_xwinwrap_running = isXwinwrapRunning();
                     const bool is_compositor_running = isCompositorRunning();
 
-                    if (!is_xwinwrap_running && !is_any_running) initXWinwrap(config_path);
-
                     if (should_compose && !is_compositor_running && !is_any_running) initCompositor();
+
+                    if (!is_xwinwrap_running && !is_any_running) initXWinwrap(config_path);
 
                     if (checkFile(config_path, "mpv.log"))
                     {
                         pkill("xwinwrap", SIGKILL);
-
-                        sleep(1);
 
                         initXWinwrap(config_path);
                     }
