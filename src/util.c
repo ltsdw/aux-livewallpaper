@@ -475,6 +475,8 @@ static void removePid(const pid_t pid)
 
 void initXWinwrap(Filepath config_path)
 {
+    sleep(delay_time);
+
     char* log_file_flag;
     char* media_file;
 
@@ -505,6 +507,8 @@ void initXWinwrap(Filepath config_path)
 
 void initCompositor(void)
 {
+    sleep(delay_time);
+
     Cmd compositor_name = getCompositorName();
 
     pid_t pid = spawnProcess(compositor_name, compositor, false);

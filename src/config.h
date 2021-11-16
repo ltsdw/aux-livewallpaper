@@ -1,6 +1,13 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+/**
+ * time in seconds to delay each call to start xwinwrap and compositor.
+ * as the "-ov" flag will draw above any fullscreened window and without it
+ * when starting aux_lwallpaper from xinitrc will show only a black screen.
+ * it's needed at least 2 seconds between each call to start xwinwrap and a compositor.
+*/
+unsigned short delay_time = 2;
 
 // name of the file that should be used with xwinwrap
 // char media[] = "demon-mask-pixel-720p-18fps.mp4"
